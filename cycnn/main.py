@@ -140,7 +140,8 @@ def validate(model, device, criterion, test_loader, epoch, args):
     return validation_loss, accuracy
 
 
-def test(model, device, criterion, test_loader, args, output_dir, train_set, test_set):
+# def test(model, device, criterion, test_loader, args, output_dir, train_set, test_set):
+def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
     test_loss, correct, num_data = 0, 0, 0
     all_preds, all_labels = [], []
@@ -190,8 +191,16 @@ def test(model, device, criterion, test_loader, args, output_dir, train_set, tes
     # print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
 
     # save_confusion_matrix(all_labels, all_preds, train_set, test_set, args['output_dir'])
-    cm = confusion_matrix(all_labels, all_preds)
-    save_confusion_matrix(cm, train_set, test_set, output_dir)
+    # cm = confusion_matrix(all_labels, all_preds)
+    # save_confusion_matrix(cm, train_set, test_set, output_dir)
+    
+    cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
+
+    cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
+    np.save(cm_file, cm)
+    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_file.replace('.npy', '.png'))
+    print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
+
     return test_loss, accuracy
 
 
@@ -284,9 +293,13 @@ def main():
         checkpoint = torch.load('saves/' + fname + '.pt')
         model.load_state_dict(checkpoint['state_dict'])
         model.to(device)
-        output_dir = args.output_dir if args.output_dir else f"./logs/{args.train_set}_test_on_{args.test_set}"
+        # output_dir = args.output_dir if args.output_dir else f"./logs/{args.train_set}_test_on_{args.test_set}"
+        output_dir = args['output_dir'] if 'output_dir' in args and args['output_dir'] else f"./logs/{args['train_set']}_test_on_{args['test_set']}"
+
         os.makedirs(output_dir, exist_ok=True)
-        test_loss, test_accuracy = test(model, device, criterion, test_loader, args,  output_dir, args.train_set, args.test_set)
+        test_loss, test_accuracy = test(model, device, criterion, test_loader, args, args['output_dir'])
+
+        # test_loss, test_accuracy = test(model, device, criterion, test_loader, args,  output_dir, args.train_set, args.test_set)
         sys.exit(0)
 
 
