@@ -1,18 +1,19 @@
 import os
 import json
 
-with open("train_test_scenarios.json") as f:
+with open("train_test_scenariosv2.json") as f:
     train_test_dict = json.load(f)
 
 main_script = "main.py"
 venv_python = "venv/bin/python"
 
 base_data_dir = "./data/MNIST_WIN"
-merged_dir = os.path.join(base_data_dir, "merged_datasets")
+merged_dir = base_data_dir
+# merged_dir = os.path.join(base_data_dir, "merged_datasets")
 dataset_mnist_non_rotated = os.path.join(base_data_dir, "dataset_mnist_non_rotated")
 
-base_save_dir = "./saves"
-base_log_dir = "./logs/json_2/"
+base_save_dir = "./saves/MNIST/"
+base_log_dir = "./logs/json_3/"
 train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
@@ -63,13 +64,20 @@ def main():
         train_data_dir = os.path.join(merged_dir, train_set)
         train_log_file = os.path.join(train_log_dir, f"{train_set}_train.txt")
         model_save_path = generate_model_save_path(train_set)
-        cm_output_dir = os.path.join(cm_log_dir, "merged_datasets_"+train_set)
+        cm_output_dir = os.path.join(cm_log_dir, train_set)
 
         print(f"Model save path: {model_save_path}")
+        
+        # train_data_dir = (
+        #     dataset_mnist_non_rotated if train_set == "dataset_mnist_non_rotated" 
+        #     else os.path.join(merged_dir, train_set)
+        # )
 
         if not dataset_valid(train_data_dir):
+            print(f"❌  not dataset_valid {train_data_dir}")
             print(f"❌ Missing training data files for: {train_set}")
             continue
+
 
         print(f"\n=== TRAINING on {train_set} ===")
 
@@ -96,8 +104,9 @@ def main():
                 continue
 
             print(f"--- TESTING {train_set} model on {test_set} ---")
-            test_subdir = os.path.join(test_log_dir, "merged_datasets_"+train_set)
-            cm_output_dir = os.path.join(cm_log_dir, f"merged_datasets_{train_set}/merged_datasets_{train_set}_test_on_{test_set}")
+            test_set = test_set.replace("/", "_")
+            test_subdir = os.path.join(test_log_dir, train_set)
+            cm_output_dir = os.path.join(cm_log_dir, f"{train_set}/{train_set}_test_on_{test_set}")
             os.makedirs(test_subdir, exist_ok=True)
             test_log_file = os.path.join(test_subdir, f"{train_set}_test_on_{test_set}.txt")
 
