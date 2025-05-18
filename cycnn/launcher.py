@@ -62,8 +62,10 @@ def generate_model_save_path(train_set):
 def main():
     for train_set, test_sets in train_test_dict.items():
         train_data_dir = os.path.join(merged_dir, train_set)
+        train_set = train_set.replace("/", "_")
         train_log_file = os.path.join(train_log_dir, f"{train_set}_train.txt")
         model_save_path = generate_model_save_path(train_set)
+        print(f"SAVE MODEL PATH{model_save_path}")
         cm_output_dir = os.path.join(cm_log_dir, train_set)
 
         print(f"Model save path: {model_save_path}")
@@ -102,6 +104,7 @@ def main():
             if not dataset_valid(test_data_dir):
                 print(f"❌ Missing test data for: {test_set}, skipping.")
                 continue
+            print(model_save_path)
 
             print(f"--- TESTING {train_set} model on {test_set} ---")
             test_set = test_set.replace("/", "_")
@@ -109,14 +112,15 @@ def main():
             cm_output_dir = os.path.join(cm_log_dir, f"{train_set}/{train_set}_test_on_{test_set}")
             os.makedirs(test_subdir, exist_ok=True)
             test_log_file = os.path.join(test_subdir, f"{train_set}_test_on_{test_set}.txt")
-
             test_cmd = (
                 f"{venv_python} {main_script} "
                 f"--test --model={model_name} --dataset=mnist-custom "
                 f"--polar-transform={polar_transform} "
                 f"--data-dir={train_data_dir} "
                 f"--test-data-dir={test_data_dir} "
-                f"--output-dir={cm_output_dir}"
+                f"--output-dir={cm_output_dir} "    
+                f"--model-path={generate_model_save_path(train_set)} "
+                # f"--model-path=JPRDADFASDDFFD.pt"
             )
             run_command(test_cmd, test_log_file)
 
