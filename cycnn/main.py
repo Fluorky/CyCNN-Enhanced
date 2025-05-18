@@ -213,6 +213,7 @@ def main():
     parser = argparse.ArgumentParser(description='')
 
     parser.add_argument('--model', type=str, default='resnet20', help='Model to train.')
+    parser.add_argument('--model-path', type=str, default=None, help='Path to the trained model file.')
     parser.add_argument('--train', action='store_true', help='If used, run the script with training mode.')
     parser.add_argument('--test', action='store_true', help='If used, run the script with test mode.')
     parser.add_argument('--polar-transform', type=str, default=None, help='Polar transformation. Should be one of linearpolar/logpolar.')
@@ -288,11 +289,20 @@ def main():
     # ))
 
     """ Test-Only (Using saved .pt file) """
+
     if args['test']:
-        print('===> Testing {} with rotated dataset begin'.format(fname))
-        checkpoint = torch.load('saves/' + fname + '.pt')
+        print(f"===> Testing model from {args['model_path']}")
+        if args['model_path'] is None:
+            print('Error: Please provide --model-path for testing.')
+            sys.exit(1)
+        checkpoint = torch.load(args['model_path'], map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
         model.to(device)
+        print('Model loaded successfully.')
+        # print('===> Testing {} with rotated dataset begin'.format(fname))
+        # checkpoint = torch.load('saves/' + fname + '.pt')
+        # model.load_state_dict(checkpoint['state_dict'])
+        # model.to(device)
         # output_dir = args.output_dir if args.output_dir else f"./logs/{args.train_set}_test_on_{args.test_set}"
         output_dir = args['output_dir'] if 'output_dir' in args and args['output_dir'] else f"./logs/{args['train_set']}_test_on_{args['test_set']}"
 
