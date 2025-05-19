@@ -293,8 +293,9 @@ def main():
     if args['test']:
         print(f"===> Testing model from {args['model_path']}")
         if args['model_path'] is None:
-            print('Error: Please provide --model-path for testing.')
-            sys.exit(1)
+            # print('Error: Please provide --model-path for testing.')
+            checkpoint = torch.load('saves/' + fname + '.pt')
+            # sys.exit(1)
         checkpoint = torch.load(args['model_path'], map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
         model.to(device)
