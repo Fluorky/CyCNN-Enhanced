@@ -13,7 +13,7 @@ merged_dir = base_data_dir
 dataset_mnist_non_rotated = os.path.join(base_data_dir, "dataset_mnist_non_rotated")
 
 base_save_dir = "./saves/MNIST/"
-base_log_dir = "./logs/json_3/"
+base_log_dir = "./logs/json_4/"
 train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
@@ -63,7 +63,7 @@ def main():
     for train_set, test_sets in train_test_dict.items():
         train_data_dir = os.path.join(merged_dir, train_set)
         train_set = train_set.replace("/", "_")
-        train_log_file = os.path.join(train_log_dir, f"{train_set}_train.txt")
+        train_log_file = os.path.join(train_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}_train.txt")
         model_save_path = generate_model_save_path(train_set)
         print(f"SAVE MODEL PATH{model_save_path}")
         cm_output_dir = os.path.join(cm_log_dir, train_set)
@@ -109,9 +109,9 @@ def main():
             print(f"--- TESTING {train_set} model on {test_set} ---")
             test_set = test_set.replace("/", "_")
             test_subdir = os.path.join(test_log_dir, train_set)
-            cm_output_dir = os.path.join(cm_log_dir, f"{train_set}/{train_set}_test_on_{test_set}")
+            cm_output_dir = os.path.join(cm_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}/{train_set}_test_on_{test_set}")
             os.makedirs(test_subdir, exist_ok=True)
-            test_log_file = os.path.join(test_subdir, f"{train_set}_test_on_{test_set}.txt")
+            test_log_file = os.path.join(test_subdir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}_test_on_{test_set}.txt")
             test_cmd = (
                 f"{venv_python} {main_script} "
                 f"--test --model={model_name} --dataset=mnist-custom "
