@@ -204,6 +204,5 @@ tags
 !cycnn/logs/.gitkeep
 
 #venv
-
 .venv/
 venv/
