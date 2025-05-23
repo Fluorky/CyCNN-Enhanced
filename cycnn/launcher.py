@@ -18,8 +18,8 @@ train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
 model_name = "cyvgg19"
-polar_transform = "linearpolar"
-
+polar_transform = "logpolar"
+# polar_transform = "linearpolar"
 overwrite_logs = False
 overwrite_models = False
 
@@ -108,7 +108,7 @@ def main():
 
             print(f"--- TESTING {train_set} model on {test_set} ---")
             test_set = test_set.replace("/", "_")
-            test_subdir = os.path.join(test_log_dir, train_set)
+            test_subdir = os.path.join(test_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}")
             cm_output_dir = os.path.join(cm_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}/{train_set}_test_on_{test_set}")
             os.makedirs(test_subdir, exist_ok=True)
             test_log_file = os.path.join(test_subdir, f"mnist-custom-{model_name}-{polar_transform}_{train_set}_test_on_{test_set}.txt")
