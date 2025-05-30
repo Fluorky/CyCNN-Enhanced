@@ -1,7 +1,7 @@
 import os
 import json
 
-with open("train_test_scenariosv3.json") as f:
+with open("train_test_scenarios.json") as f:
 # with open("train_test_scenariosv2.json") as f:
     train_test_dict = json.load(f)
 
