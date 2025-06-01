@@ -167,6 +167,9 @@ dmypy.json
 cycnn/data/*
 cycnn/saves/*
 cycnn/logs/*
+cycnn/logs_backup/*
+cycnn/data_backup/*
+
 tree
 
 
