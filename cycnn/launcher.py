@@ -2,7 +2,6 @@ import os
 import json
 
 with open("train_test_scenarios.json") as f:
-# with open("train_test_scenariosv2.json") as f:
     train_test_dict = json.load(f)
 
 main_script = "main.py"
@@ -19,8 +18,8 @@ train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
 
-# models = ["cyvgg19"] 
-models = ["cyvgg19", "cyresnet56"] 
+# models = ["cyvgg69"]
+models = ["cyvgg19", "cyresnet56"]
 polar_transforms = ["logpolar", "linearpolar"]
 
 overwrite_logs = False
