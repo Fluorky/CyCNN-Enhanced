@@ -10,9 +10,8 @@ train_log_dir = logs_base / "train"
 test_log_dir = logs_base / "test"
 cm_dir = logs_base / "confusion_matrices"
 
-model = "cyvgg19"
-activation = "linearpolar"
-prefix = f"mnist-custom-{model}-{activation}"
+models = ["cyvgg19", "cyresnet56"]
+activations = ["linearpolar", "logpolar"]
 
 # === LOAD JSON SCENARIO ===
 with open(json_path) as f:
@@ -23,24 +22,35 @@ expected_train_logs = set()
 expected_test_logs = set()
 expected_cm_files = set()
 
-for train_set, test_sets in scenario.items():
-    train_file = train_log_dir / f"{prefix}_{train_set}_train.txt"
-    expected_train_logs.add(train_file.resolve())
+for model in models:
+    for activation in activations:
+        prefix = f"mnist-custom-{model}-{activation}"
+        for train_set, test_sets in scenario.items():
+            train_file = train_log_dir / f"{prefix}_{train_set}_train.txt"
+            expected_train_logs.add(train_file.resolve())
 
-    test_subdir = test_log_dir / f"{prefix}_{train_set}"
-    cm_model_dir = cm_dir / f"{prefix}_{train_set}"
+            test_subdir = test_log_dir / f"{prefix}_{train_set}"
+            cm_model_dir = cm_dir / f"{prefix}_{train_set}"
 
-    for test_set in test_sets:
-        test_file = test_subdir / f"{prefix}_{train_set}_test_on_{test_set}.txt"
-        cm_file = cm_model_dir / f"{train_set}_test_on_{test_set}" / "confusion_matrix.npy"
+            for test_set in test_sets:
+                test_file = test_subdir / f"{prefix}_{train_set}_test_on_{test_set}.txt"
+                cm_subfolder = cm_model_dir / f"{train_set}_test_on_{test_set}"
 
-        expected_test_logs.add(test_file.resolve())
-        expected_cm_files.add(cm_file.resolve())
+                cm_npy = cm_subfolder / "confusion_matrix.npy"
+                cm_png = cm_subfolder / "confusion_matrix.png"
+
+                expected_test_logs.add(test_file.resolve())
+                expected_cm_files.update([
+                    cm_npy.resolve(),
+                    cm_png.resolve()
+                ])
 
 # === ACTUAL FILES ===
 actual_train_logs = set(p.resolve() for p in train_log_dir.rglob("*.txt"))
 actual_test_logs = set(p.resolve() for p in test_log_dir.rglob("*.txt"))
-actual_cm_files = set(p.resolve() for p in cm_dir.rglob("confusion_matrix.npy"))
+actual_cm_files = set(
+    p.resolve() for p in cm_dir.rglob("*") if p.name in {"confusion_matrix.npy", "confusion_matrix.png"}
+)
 
 # === HELPERS ===
 def print_diff(title, expected, actual):
@@ -62,10 +72,10 @@ def print_diff(title, expected, actual):
 # === REPORT ===
 print_diff("Train Logs", expected_train_logs, actual_train_logs)
 print_diff("Test Logs", expected_test_logs, actual_test_logs)
-print_diff("Confusion Matrices", expected_cm_files, actual_cm_files)
+print_diff("Confusion Matrices (.npy + .png)", expected_cm_files, actual_cm_files)
 
 # === OPTIONAL CLEANUP ===
-delete_extras = False  # Set to True if you want to remove extra files
+delete_extras = False  # Set True if you want auto cleanup
 
 if delete_extras:
     for file in actual_train_logs - expected_train_logs:
@@ -80,6 +90,6 @@ if delete_extras:
         print(f"🗑️ Deleting confusion matrix: {file}")
         file.unlink()
         try:
-            file.parent.rmdir()  # remove folder if empty
+            file.parent.rmdir()
         except OSError:
             pass
