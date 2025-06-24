@@ -17,6 +17,9 @@ activations = ["linearpolar", "logpolar"]
 with open(json_path) as f:
     scenario = json.load(f)
 
+def normalize_key(key: str) -> str:
+    return key.replace("/", "_")
+
 # === EXPECTED PATHS ===
 expected_train_logs = set()
 expected_test_logs = set()
@@ -25,16 +28,18 @@ expected_cm_files = set()
 for model in models:
     for activation in activations:
         prefix = f"mnist-custom-{model}-{activation}"
-        for train_set, test_sets in scenario.items():
-            train_file = train_log_dir / f"{prefix}_{train_set}_train.txt"
+        for train_key, test_keys in scenario.items():
+            train_id = normalize_key(train_key)
+            train_file = train_log_dir / f"{prefix}_{train_id}_train.txt"
             expected_train_logs.add(train_file.resolve())
 
-            test_subdir = test_log_dir / f"{prefix}_{train_set}"
-            cm_model_dir = cm_dir / f"{prefix}_{train_set}"
+            test_subdir = test_log_dir / f"{prefix}_{train_id}"
+            cm_model_dir = cm_dir / f"{prefix}_{train_id}"
 
-            for test_set in test_sets:
-                test_file = test_subdir / f"{prefix}_{train_set}_test_on_{test_set}.txt"
-                cm_subfolder = cm_model_dir / f"{train_set}_test_on_{test_set}"
+            for test_key in test_keys:
+                test_id = normalize_key(test_key)
+                test_file = test_subdir / f"{prefix}_{train_id}_test_on_{test_id}.txt"
+                cm_subfolder = cm_model_dir / f"{train_id}_test_on_{test_id}"
 
                 cm_npy = cm_subfolder / "confusion_matrix.npy"
                 cm_png = cm_subfolder / "confusion_matrix.png"
