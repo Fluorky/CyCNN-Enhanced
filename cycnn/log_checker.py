@@ -79,8 +79,14 @@ print_diff("Train Logs", expected_train_logs, actual_train_logs)
 print_diff("Test Logs", expected_test_logs, actual_test_logs)
 print_diff("Confusion Matrices (.npy + .png)", expected_cm_files, actual_cm_files)
 
+# === SUMMARY ===
+print("\n📊 Summary of expected files:")
+print(f"   🟡 Train logs: {len(expected_train_logs)}")
+print(f"   🔵 Test logs: {len(expected_test_logs)}")
+print(f"   🟢 Confusion matrices (.npy + .png): {len(expected_cm_files)}")
+
 # === OPTIONAL CLEANUP ===
-delete_extras = False  # Set True if you want auto cleanup
+delete_extras = True  # Set True if you want auto cleanup
 
 if delete_extras:
     for file in actual_train_logs - expected_train_logs:
