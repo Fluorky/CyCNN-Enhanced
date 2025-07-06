@@ -58,9 +58,13 @@ actual_cm_files = set(
 )
 
 # === HELPERS ===
+def is_nonempty_file(path: Path) -> bool:
+    return path.exists() and path.is_file() and path.stat().st_size > 0
+
 def print_diff(title, expected, actual):
     missing = expected - actual
     extra = actual - expected
+    empty = {p for p in actual & expected if not is_nonempty_file(p)}
 
     print(f"\n📂 {title}")
     if missing:
@@ -71,8 +75,13 @@ def print_diff(title, expected, actual):
         print("⚠️ Extra files:")
         for p in sorted(extra):
             print(f"   - {p}")
-    if not missing and not extra:
-        print("✅ All expected files are present.")
+    if empty:
+        print("⚠️ Empty files (0 B):")
+        for p in sorted(empty):
+            print(f"   - {p}")
+    if not missing and not extra and not empty:
+        print("✅ All expected files are present and non-empty.")
+
 
 # === REPORT ===
 print_diff("Train Logs", expected_train_logs, actual_train_logs)
