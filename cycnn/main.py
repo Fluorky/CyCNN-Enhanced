@@ -157,8 +157,11 @@ def test(model, device, criterion, test_loader, args):
             # images = image_transforms.resize_images(images, 32, 32)
             # images = image_transforms.resize_images(images, 64, 64)
 
-            """Random rotation is always applied at testing"""
-            images = image_transforms.random_rotate(images) # to check
+            if not args.get('use_prerotated_test_set', False):
+                print("Applying random rotation to test images.")
+                images = image_transforms.random_rotate(images)
+            else:
+                print("Skipping random rotation (using prerotated test set).")
 
             """Apply polar transforms"""
             if args['polar_transform'] is not None:
@@ -203,6 +206,7 @@ def main():
     parser = argparse.ArgumentParser(description='')
 
     parser.add_argument('--model', type=str, default='resnet20', help='Model to train.')
+    parser.add_argument('--model-path', type=str, default=None, help='Path to the trained model file.')
     parser.add_argument('--train', action='store_true', help='If used, run the script with training mode.')
     parser.add_argument('--test', action='store_true', help='If used, run the script with test mode.')
     parser.add_argument('--polar-transform', type=str, default=None, help='Polar transformation. Should be one of linearpolar/logpolar.')
@@ -215,6 +219,10 @@ def main():
     parser.add_argument('--redirect', action='store_true', help='If used, redirect stdout to log file in logs/ .')
     parser.add_argument('--early-stop-epochs', type=float, default=15, help='Epochs to wait until early stopping.')
     parser.add_argument('--test-while-training', action='store_true', help='If used with --train, run tests at every training epoch.')
+    parser.add_argument('--test-data-dir', type=str, default=None, help='Optional directory for test data.')
+    parser.add_argument('--model-save-path', type=str, default=None, help='Path to save the trained model.')
+    parser.add_argument('--output-dir', type=str, help='Output directory for confusion matrices.')
+    parser.add_argument('--use-prerotated-test-set', action='store_true', help='If set, disables test-time random rotation.')
 
     args = vars(parser.parse_args())
 
@@ -237,21 +245,78 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
 
-    """Load data """
-    train_loader, validation_loader, test_loader = \
-            load_data(dataset=args['dataset'], data_dir=args['data_dir'], batch_size=args['batch_size'])
+    # """Load data """
+    # train_loader, validation_loader, test_loader = \
+    #         load_data(dataset=args['dataset'], data_dir=args['data_dir'], batch_size=args['batch_size'])
     
-    print('{} Train data. {} Validation data. {} Test data.'.format(
-        len(train_loader.dataset), len(validation_loader.dataset), len(test_loader.dataset)
-    ))
+    # print('{} Train data. {} Validation data. {} Test data.'.format(
+    #     len(train_loader.dataset), len(validation_loader.dataset), len(test_loader.dataset)
+    # ))
+
+    # """ Test-Only (Using saved .pt file) """
+    # if args['test']:
+    #     print('===> Testing {} with rotated dataset begin'.format(fname))
+    #     checkpoint = torch.load('saves/' + fname + '.pt')
+    #     model.load_state_dict(checkpoint['state_dict'])
+    #     model.to(device)
+    #     test_loss, test_accuracy = test(model, device, criterion, test_loader, args)
+    #     sys.exit(0)
+
+    """Load data"""
+    if args['test'] and args['test_data_dir'] is not None:
+        print(f"⚡ Loading test data from {args['test_data_dir']} ...")
+        _, _, test_loader = load_data(dataset=args['dataset'], data_dir=args['test_data_dir'], batch_size=args['batch_size'])
+    else:
+        try:
+            train_loader, validation_loader, test_loader = load_data(
+                dataset=args['dataset'], data_dir=args['data_dir'], batch_size=args['batch_size']
+            )
+        except Exception as e:
+            print(f"❌ Error loading training/validation data: {e}")
+            sys.exit(1)
+
+    if train_loader:
+        print(f"✔️ Train data: {len(train_loader.dataset)} samples")
+    else:
+        print("⚠️ Train data not loaded.")
+
+    if validation_loader:
+        print(f"✔️ Validation data: {len(validation_loader.dataset)} samples")
+    else:
+        print("⚠️ Validation data not loaded.")
+
+    if test_loader:
+        print(f"✔️ Test data: {len(test_loader.dataset)} samples")
+    else:
+        print("⚠️ Test data not loaded.")
+        
+    # print('{} Train data. {} Validation data. {} Test data.'.format(
+    #     len(train_loader.dataset), len(validation_loader.dataset), len(test_loader.dataset)
+    # ))
 
     """ Test-Only (Using saved .pt file) """
+
     if args['test']:
-        print('===> Testing {} with rotated dataset begin'.format(fname))
-        checkpoint = torch.load('saves/' + fname + '.pt')
+        print(f"===> Testing model from {args['model_path']}")
+        if args['model_path'] is None:
+            # print('Error: Please provide --model-path for testing.')
+            checkpoint = torch.load('saves/' + fname + '.pt')
+            # sys.exit(1)
+        checkpoint = torch.load(args['model_path'], map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
         model.to(device)
-        test_loss, test_accuracy = test(model, device, criterion, test_loader, args)
+        print('Model loaded successfully.')
+        # print('===> Testing {} with rotated dataset begin'.format(fname))
+        # checkpoint = torch.load('saves/' + fname + '.pt')
+        # model.load_state_dict(checkpoint['state_dict'])
+        # model.to(device)
+        # output_dir = args.output_dir if args.output_dir else f"./logs/{args.train_set}_test_on_{args.test_set}"
+        output_dir = args['output_dir'] if 'output_dir' in args and args['output_dir'] else f"./logs/{args['train_set']}_test_on_{args['test_set']}"
+
+        os.makedirs(output_dir, exist_ok=True)
+        test_loss, test_accuracy = test(model, device, criterion, test_loader, args, args['output_dir'])
+
+        # test_loss, test_accuracy = test(model, device, criterion, test_loader, args,  output_dir, args.train_set, args.test_set)
         sys.exit(0)
 
 
@@ -279,14 +344,23 @@ def main():
 
             if accuracy > max_acc:
                 last_saved, max_acc = epoch, accuracy
+                # save_path = f'saves/{fname}{args["model_save_path"]}.pt' if args['model_save_path'] else f'saves/{fname}.pt'
+                save_path = args['model_save_path'] if args['model_save_path'] else f'saves/{fname}.pt'
 
-                print('Saving model checkpoint to saves/{}.pt'.format(fname))
+                # print('Saving model checkpoint to saves/{}.pt'.format(fname))
 
+                # torch.save({
+                #     'state_dict': model.state_dict(),
+                #     'acc': max_acc,
+                #     'epoch': epoch,
+                # }, 'saves/' + fname + '.pt')
+                
                 torch.save({
                     'state_dict': model.state_dict(),
                     'acc': max_acc,
                     'epoch': epoch,
-                }, 'saves/' + fname + '.pt')
+                }, save_path)
+                print(f"💾 Model saved at: {save_path}")
 
             """Elapsed time per epoch"""
             end_time = time.time()
