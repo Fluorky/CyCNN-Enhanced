@@ -155,7 +155,7 @@ def test(model, device, criterion, test_loader, args, output_dir):
             images = image_transforms.resize_images(images, 32, 32)
 
             """Random rotation is always applied at testing"""
-            images = image_transforms.random_rotate(images)
+            # images = image_transforms.random_rotate(images)
 
             """Apply polar transforms"""
             if args['polar_transform'] is not None:
