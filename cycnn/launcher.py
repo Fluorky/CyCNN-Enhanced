@@ -12,7 +12,7 @@ merged_dir = base_data_dir
 dataset_mnist_non_rotated = os.path.join(base_data_dir, "dataset_mnist_non_rotated")
 
 base_save_dir = "./saves/MNIST/"
-base_log_dir = "./logs/json_4/"
+base_log_dir = "./logs/json_MNIST/"
 # base_log_dir = "./logs/json_4_copy/"
 train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
@@ -28,8 +28,8 @@ overwrite_models = False
 required_files = [
     "train-images-idx3-ubyte",
     "train-labels-idx1-ubyte",
-    "t10k-images-idx3-ubyte",
-    "t10k-labels-idx1-ubyte",
+    "test-images-idx3-ubyte",
+    "test-labels-idx1-ubyte",
 ]
 
 
@@ -106,7 +106,7 @@ def main():
                         f"--data-dir={train_data_dir} "
                         f"--test-data-dir={test_data_dir} "
                         f"--output-dir={cm_output_dir} "
-                        f"--model-path={model_save_path}"
+                        f"--model-path={model_save_path} --use-prerotated-test-set"
                     )
                     run_command(test_cmd, test_log_file)
 
