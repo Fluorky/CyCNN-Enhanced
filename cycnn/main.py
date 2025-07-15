@@ -52,7 +52,9 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
     for batch_idx, (images, labels) in enumerate(train_loader):
 
         """Resize images to fit into the model"""
-        images = image_transforms.resize_images(images, 32, 32)
+        # images = image_transforms.resize_images(images, 32, 32)
+        # images = image_transforms.resize_images(images, 64, 64)
+        # images = image_transforms.resize_images(images, 128, 128)
 
         """Apply image transforms"""
         if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -99,7 +101,8 @@ def validate(model, device, criterion, test_loader, epoch, args):
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            images = image_transforms.resize_images(images, 32, 32)
+            # images = image_transforms.resize_images(images, 64, 64)
+            # images = image_transforms.resize_images(images, 32, 32)
 
             """Apply image transforms"""
             if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -140,7 +143,6 @@ def validate(model, device, criterion, test_loader, epoch, args):
     return validation_loss, accuracy
 
 
-# def test(model, device, criterion, test_loader, args, output_dir, train_set, test_set):
 def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
     test_loss, correct, num_data = 0, 0, 0
@@ -152,10 +154,12 @@ def test(model, device, criterion, test_loader, args, output_dir):
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            images = image_transforms.resize_images(images, 32, 32)
+            # images = image_transforms.resize_images(images, 32, 32)
+            # images = image_transforms.resize_images(images, 64, 64)
 
-            """Random rotation is always applied at testing"""
-            # images = image_transforms.random_rotate(images)
+            if not args.get('use_prerotated_test_set', False):
+                print("Applying random rotation to test images.")
+                images = image_transforms.random_rotate(images)
 
             """Apply polar transforms"""
             if args['polar_transform'] is not None:
@@ -172,8 +176,6 @@ def test(model, device, criterion, test_loader, args, output_dir):
 
             correct += pred.eq(labels.view_as(pred)).sum().item()
             num_data += len(images)
-            all_preds.extend(pred.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
 
     test_loss /= len(test_loader)
     accuracy = 100. * correct / num_data
@@ -181,25 +183,14 @@ def test(model, device, criterion, test_loader, args, output_dir):
     """Print Test Summary"""
     print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
         test_loss, correct, num_data, accuracy))
-    # num_classes = len(np.unique(all_labels))
-    # cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
-    # # cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
-    # cm_path = f"confusion_matrix_{args['dataset']}_{args['model']}.npy"
-    # np.save(cm_path, cm)
 
-    # plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_path.replace('.npy', '.png'))
-    # print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
-
-    # save_confusion_matrix(all_labels, all_preds, train_set, test_set, args['output_dir'])
-    # cm = confusion_matrix(all_labels, all_preds)
-    # save_confusion_matrix(cm, train_set, test_set, output_dir)
-    
     cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
 
     cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
     np.save(cm_file, cm)
     plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_file.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
+
 
     return test_loss, accuracy
 
@@ -229,6 +220,7 @@ def main():
     parser.add_argument('--test-data-dir', type=str, default=None, help='Optional directory for test data.')
     parser.add_argument('--model-save-path', type=str, default=None, help='Path to save the trained model.')
     parser.add_argument('--output-dir', type=str, help='Output directory for confusion matrices.')
+    parser.add_argument('--use-prerotated-test-set', action='store_true', help='If set, disables test-time random rotation.')
 
     args = vars(parser.parse_args())
 
@@ -244,17 +236,32 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
-
+    # print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
     ))
 
     criterion = nn.CrossEntropyLoss()
 
-    train_loader, validation_loader, test_loader = None, None, None
     # """Load data """
     # train_loader, validation_loader, test_loader = \
     #         load_data(dataset=args['dataset'], data_dir=args['data_dir'], batch_size=args['batch_size'])
+    
+    # print('{} Train data. {} Validation data. {} Test data.'.format(
+    #     len(train_loader.dataset), len(validation_loader.dataset), len(test_loader.dataset)
+    # ))
+
+    # """ Test-Only (Using saved .pt file) """
+    # if args['test']:
+    #     print('===> Testing {} with rotated dataset begin'.format(fname))
+    #     checkpoint = torch.load('saves/' + fname + '.pt')
+    #     model.load_state_dict(checkpoint['state_dict'])
+    #     model.to(device)
+    #     test_loss, test_accuracy = test(model, device, criterion, test_loader, args)
+    #     sys.exit(0)
+    train_loader = None
+    validation_loader = None
+    test_loader = None
 
     """Load data"""
     if args['test'] and args['test_data_dir'] is not None:
@@ -340,22 +347,21 @@ def main():
                 last_saved, max_acc = epoch, accuracy
                 # save_path = f'saves/{fname}{args["model_save_path"]}.pt' if args['model_save_path'] else f'saves/{fname}.pt'
                 save_path = args['model_save_path'] if args['model_save_path'] else f'saves/{fname}.pt'
-                torch.save({
-                    'state_dict': model.state_dict(),
-                    'acc': max_acc,
-                    'epoch': epoch,
-                }, save_path)
-                print(f"💾 Model saved at: {save_path}")
-
 
                 # print('Saving model checkpoint to saves/{}.pt'.format(fname))
-                
 
                 # torch.save({
                 #     'state_dict': model.state_dict(),
                 #     'acc': max_acc,
                 #     'epoch': epoch,
                 # }, 'saves/' + fname + '.pt')
+                
+                torch.save({
+                    'state_dict': model.state_dict(),
+                    'acc': max_acc,
+                    'epoch': epoch,
+                }, save_path)
+                print(f"💾 Model saved at: {save_path}")
 
             """Elapsed time per epoch"""
             end_time = time.time()
@@ -374,3 +380,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
