@@ -30,6 +30,8 @@ class CyVGG(nn.Module):
         super(CyVGG, self).__init__()
         self.features = features
         self.classify = classify
+        
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # added to resolve 64x64 and more
 
         if self.classify:
             self.classifier = nn.Sequential(
@@ -45,8 +47,9 @@ class CyVGG(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), -1)
-
+        x = self.avgpool(x)  # added
+        x = torch.flatten(x, 1)  # changed old below
+        # x = x.view(x.size(0), -1) 3 old
         if self.classify:
             x = self.classifier(x)
 
@@ -77,50 +80,62 @@ cfg = {
           512, 512, 512, 512, 'M'],
 }
 
+def get_num_classes(dataset):
+    if dataset == 'cifar100':
+        return 100
+    elif dataset in ['mnist', 'cifar10']:
+        return 10
+    elif dataset.startswith('GTSRB'):
+        return 43
+    elif dataset.startswith('LEGO'):
+        return 40
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
+
 
 def cyvgg11(classify=True, dataset='mnist'):
-    """CyVGG 11-layer model (configuration "A")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 11-layer model (configuration 'A')"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['A'], dataset=dataset), num_classes=num_classes, classify=classify)
 
 
 def cyvgg11_bn(classify=True, dataset='mnist'):
-    """CyVGG 11-layer model (configuration "A") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 11-layer model (configuration 'A') with batch normalization"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['A'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
 
 
 def cyvgg13(classify=True, dataset='mnist'):
-    """CyVGG 13-layer model (configuration "B")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 13-layer model (configuration 'B')"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['B'], dataset=dataset), num_classes=num_classes, classify=classify)
 
 
 def cyvgg13_bn(classify=True, dataset='mnist'):
-    """CyVGG 13-layer model (configuration "B") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 13-layer model (configuration 'B') with batch normalization"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['B'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
 
 
 def cyvgg16(classify=True, dataset='mnist'):
-    """CyVGG 16-layer model (configuration "D")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 16-layer model (configuration 'D')"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['D'], dataset=dataset), num_classes=num_classes, classify=classify)
 
 
 def cyvgg16_bn(classify=True, dataset='mnist'):
-    """CyVGG 16-layer model (configuration "D") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 16-layer model (configuration 'D') with batch normalization"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['D'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
 
 
 def cyvgg19(classify=True, dataset='mnist'):
-    """CyVGG 19-layer model (configuration "E")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    """CyVGG 19-layer model (configuration 'E')"""
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['E'], dataset=dataset), num_classes=num_classes, classify=classify)
 
 
 def cyvgg19_bn(classify=True, dataset='mnist'):
     """CyVGG 19-layer model (configuration 'E') with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
+    num_classes = get_num_classes(dataset)
     return CyVGG(make_layers(cfg['E'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
