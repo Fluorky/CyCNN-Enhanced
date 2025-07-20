@@ -52,6 +52,9 @@ def get_model(model, dataset, classify=True):
         model = cyresnet.cyresnet44(dataset=dataset)
     if model == 'cyresnet56':
         model = cyresnet.cyresnet56(dataset=dataset)
+    if model == 'cyresnet110':
+        model = cyresnet.cyresnet110(dataset=dataset)
+    if model == 'cyresnet1202':
+        model = cyresnet.cyresnet1202(dataset=dataset)
 
     return model
-
