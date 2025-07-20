@@ -18,6 +18,19 @@ from models.cyconvlayer import CyConv2dFunction, CyConv2d
 
 __all__ = ['CyResNet', 'cyresnet20', 'cyresnet32', 'cyresnet44', 'cyresnet56', 'cyresnet110', 'cyresnet1202']
 
+# === Utility ===
+def get_num_classes(dataset):
+    if dataset == 'cifar100':
+        return 100
+    elif dataset in ['mnist', 'cifar10']:
+        return 10
+    elif dataset.startswith('GTSRB'):
+        return 43
+    elif dataset.startswith('LEGO'):
+        return 40
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
+
 def _weights_init(m):
     classname = m.__class__.__name__
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -104,31 +117,22 @@ class CyResNet(nn.Module):
 
 
 
-def cyresnet20(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [3, 3, 3], dataset=dataset, num_classes=num_classes)
+# === Model variants ===
 
+def cyresnet20(dataset='mnist'):
+    return CyResNet(BasicBlock, [3, 3, 3], dataset=dataset, num_classes=get_num_classes(dataset))
 
 def cyresnet32(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [5, 5, 5], dataset=dataset, num_classes=num_classes)
-
+    return CyResNet(BasicBlock, [5, 5, 5], dataset=dataset, num_classes=get_num_classes(dataset))
 
 def cyresnet44(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [7, 7, 7], dataset=dataset, num_classes=num_classes)
-
+    return CyResNet(BasicBlock, [7, 7, 7], dataset=dataset, num_classes=get_num_classes(dataset))
 
 def cyresnet56(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [9, 9, 9], dataset=dataset, num_classes=num_classes)
-
+    return CyResNet(BasicBlock, [9, 9, 9], dataset=dataset, num_classes=get_num_classes(dataset))
 
 def cyresnet110(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [18, 18, 18], dataset=dataset, num_classes=num_classes)
-
+    return CyResNet(BasicBlock, [18, 18, 18], dataset=dataset, num_classes=get_num_classes(dataset))
 
 def cyresnet1202(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return CyResNet(BasicBlock, [200, 200, 200], dataset=dataset, num_classes=num_classes)
+    return CyResNet(BasicBlock, [200, 200, 200], dataset=dataset, num_classes=get_num_classes(dataset))
