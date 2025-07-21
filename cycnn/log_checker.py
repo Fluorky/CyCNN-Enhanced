@@ -4,7 +4,7 @@ from pathlib import Path
 
 # === CONFIGURATION ===
 json_path = "train_test_scenarios.json"
-logs_base = Path("logs/json_4")
+logs_base = Path("logs/json_MNIST")
 
 train_log_dir = logs_base / "train"
 test_log_dir = logs_base / "test"
