@@ -29,11 +29,12 @@ import seaborn as sns
 
 def plot_confusion_matrix(cm, classes, save_path):
     """ Plot and save the confusion matrix as an image """
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(max(10, len(classes) // 2), max(8, len(classes) // 2)))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
     plt.xlabel("Predicted label")
     plt.ylabel("True label")
     plt.title("Confusion Matrix")
+    plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
 
@@ -41,7 +42,11 @@ def plot_confusion_matrix(cm, classes, save_path):
 def save_confusion_matrix(cm, train_set, test_set, output_dir):
     cm_path = os.path.join(output_dir, f"confusion_matrix_{train_set}_test_on_{test_set}.npy")
     np.save(cm_path, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_path.replace('.npy', '.png'))
+
+    num_classes = cm.shape[0]
+    class_labels = list(range(num_classes))
+
+    plot_confusion_matrix(cm, classes=class_labels, save_path=cm_path.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
 
 
@@ -177,6 +182,9 @@ def test(model, device, criterion, test_loader, args, output_dir):
             correct += pred.eq(labels.view_as(pred)).sum().item()
             num_data += len(images)
 
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(pred.cpu().numpy())
+
     test_loss /= len(test_loader)
     accuracy = 100. * correct / num_data
 
@@ -184,13 +192,14 @@ def test(model, device, criterion, test_loader, args, output_dir):
     print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
         test_loss, correct, num_data, accuracy))
 
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
+    # Dynamically determine number of classes (e.g. GTSRB has 43)
+    num_classes = len(set(all_labels).union(set(all_preds)))
+    cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
 
-    cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
+    cm_file = os.path.join(args['output_dir'], 'confusion_matrix.npy')
     np.save(cm_file, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_file.replace('.npy', '.png'))
+    plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
-
 
     return test_loss, accuracy
 
