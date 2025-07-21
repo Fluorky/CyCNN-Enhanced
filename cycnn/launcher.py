@@ -50,6 +50,7 @@ def run_command(cmd, log_file=None):
 
 def generate_model_save_path(model_name, polar_transform, train_set):
     fname = f"mnist-custom-{model_name}-{polar_transform}_{train_set}.pt"
+    os.makedirs(base_save_dir, exist_ok=True)
     return os.path.join(base_save_dir, fname)
 
 
@@ -59,6 +60,7 @@ def main():
             for train_set, test_sets in train_test_dict.items():
                 train_data_dir = os.path.join(merged_dir, train_set)
                 train_set_safe = train_set.replace("/", "_")
+                os.makedirs(base_log_dir, exist_ok=True)
                 train_log_file = os.path.join(train_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set_safe}_train.txt")
                 model_save_path = generate_model_save_path(model_name, polar_transform, train_set_safe)
                 cm_output_dir = os.path.join(cm_log_dir, train_set_safe)
