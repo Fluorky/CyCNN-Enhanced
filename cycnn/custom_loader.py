@@ -4,7 +4,7 @@ import numpy as np
 import os
 import struct
 
-class CustomMNISTDataset(Dataset):
+class CustomIDXDataset(Dataset):
     def __init__(self, images_path, labels_path, transform=None):
         self.transform = transform
         self.images = self._read_images(images_path)
