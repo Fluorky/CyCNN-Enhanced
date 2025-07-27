@@ -88,7 +88,7 @@ def get_num_classes(dataset):
     elif dataset.startswith('GTSRB'):
         return 43
     elif dataset.startswith('LEGO'):
-        return 40
+        return 50 #40
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
