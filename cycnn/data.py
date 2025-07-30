@@ -117,11 +117,6 @@ def load_LEGO_data(data_dir='./data', batch_size=128):
     test_images = os.path.join(data_dir, 'test-images-idx3-ubyte')
     test_labels = os.path.join(data_dir, 'test-labels-idx1-ubyte')
 
-    # train_images = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'train-images-idx3-ubyte')
-    # train_labels = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'train-labels-idx1-ubyte')
-    # test_images = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'test-images-idx3-ubyte')
-    # test_labels = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'test-labels-idx1-ubyte')
-
     train_set = CustomIDXDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
     test_set =CustomIDXDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
 
