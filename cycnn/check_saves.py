@@ -4,7 +4,7 @@ import shutil
 
 # === CONFIG ===
 saves_dir = "./saves/MNIST"
-json_file = "./train_test_scenarios.json"
+json_file = "./train_test_scenarios_MNIST.json"
 models = ["cyvgg19", "cyresnet56"]
 transforms = ["linearpolar", "logpolar"]
 prefix = "mnist-custom"
