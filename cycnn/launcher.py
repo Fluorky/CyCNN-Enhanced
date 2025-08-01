@@ -1,7 +1,7 @@
 import os
 import json
 
-with open("train_test_scenarios.json") as f:
+with open("train_test_scenarios_MNIST.json") as f:
     train_test_dict = json.load(f)
 
 main_script = "main.py"
