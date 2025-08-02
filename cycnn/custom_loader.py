@@ -35,3 +35,45 @@ class CustomIDXDataset(Dataset):
             image = torch.tensor(image, dtype=torch.float32) / 255.0
             image = image.unsqueeze(0)  # Add channel dim
         return image, label
+
+
+class CustomNPYDataset(Dataset):
+    def __init__(self, images_path, labels_path, transform=None):
+        """
+        Dataset class for loading .npy files containing images and labels.
+
+        Args:
+            images_path (str): Path to the .npy file with image data.
+            labels_path (str): Path to the .npy file with label data.
+            transform (callable, optional): Optional transform to be applied
+                                            on a sample.
+        """
+        self.transform = transform
+        self.images = np.load(images_path)
+        self.labels = np.load(labels_path)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        label = self.labels[idx]
+
+        # Convert to torch tensor
+        image = torch.tensor(image, dtype=torch.float32)
+
+        # Normalize if needed
+        if image.max() > 1:
+            image /= 255.0
+
+        # If grayscale: add channel dimension
+        if len(image.shape) == 2:
+            image = image.unsqueeze(0)
+        elif len(image.shape) == 3 and image.shape[2] == 3:
+            # Convert HWC to CHW
+            image = image.permute(2, 0, 1)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, int(label)
