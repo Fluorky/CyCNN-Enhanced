@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from custom_loader import CustomMNISTDataset, CustomGTSRBDataset
+from custom_loader import CustomIDXDataset
 
 
 def load_mnist_data(data_dir='./data', batch_size=128):
@@ -45,6 +45,8 @@ def load_cifar10_data(data_dir='./data', batch_size=128):
     return train_set, test_set
 
 
+# TODO refator these three methods and merge them into single method
+
 def load_custom_mnist_data(data_dir='./data', batch_size=128):
     import os
 
@@ -57,17 +59,16 @@ def load_custom_mnist_data(data_dir='./data', batch_size=128):
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-
-    train_images = os.path.join(data_dir, 'MNIST', 'raw', 'train-images-idx3-ubyte')
-    train_labels = os.path.join(data_dir, 'MNIST', 'raw', 'train-labels-idx1-ubyte')
-    test_images = os.path.join(data_dir, 'MNIST', 'raw', 't10k-images-idx3-ubyte')
-    test_labels = os.path.join(data_dir, 'MNIST', 'raw', 't10k-labels-idx1-ubyte')
-
-    train_set = CustomMNISTDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
-    test_set = CustomMNISTDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
+        
+    train_images = os.path.join(data_dir, 'train-images-idx3-ubyte')
+    train_labels = os.path.join(data_dir, 'train-labels-idx1-ubyte')
+    test_images = os.path.join(data_dir, 't10k-images-idx3-ubyte')
+    test_labels = os.path.join(data_dir, 't10k-labels-idx1-ubyte')
+    
+    train_set = CustomIDXDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
+    test_set = CustomIDXDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
 
     return train_set, test_set
-
 
 def load_custom_GTSRB_data(data_dir='./data', batch_size=128):
     import os
@@ -81,17 +82,14 @@ def load_custom_GTSRB_data(data_dir='./data', batch_size=128):
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-    # train_images = os.path.join(data_dir, 'GTSRB', 'raw', 'train-images-idx3-ubyte')
-    # train_labels = os.path.join(data_dir, 'GTSRB', 'raw', 'train-labels-idx1-ubyte')
-    # test_images = os.path.join(data_dir, 'GTSRB', 'raw', 't10k-images-idx3-ubyte')
-    # test_labels = os.path.join(data_dir, 'GTSRB', 'raw', 't10k-labels-idx1-ubyte')
-    train_images = os.path.join(data_dir, 'GTSRB', 'dataset_GTSRB_non_rotated_32x32', 'train-images-idx3-ubyte')
-    train_labels = os.path.join(data_dir, 'GTSRB', 'dataset_GTSRB_non_rotated_32x32', 'train-labels-idx1-ubyte')
-    test_images = os.path.join(data_dir, 'GTSRB', 'dataset_GTSRB_non_rotated_32x32', 'test-images-idx3-ubyte')
-    test_labels = os.path.join(data_dir, 'GTSRB', 'dataset_GTSRB_non_rotated_32x32', 'test-labels-idx1-ubyte')
 
-    train_set = CustomGTSRBDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
-    test_set = CustomGTSRBDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
+    train_images = os.path.join(data_dir, 'train-images-idx3-ubyte')
+    train_labels = os.path.join(data_dir, 'train-labels-idx1-ubyte')
+    test_images = os.path.join(data_dir, 'test-images-idx3-ubyte')
+    test_labels = os.path.join(data_dir, 'test-labels-idx1-ubyte')
+
+    train_set = CustomIDXDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
+    test_set = CustomIDXDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
 
     return train_set, test_set
 
@@ -109,17 +107,13 @@ def load_LEGO_data(data_dir='./data', batch_size=128):
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-    # train_images = os.path.join(data_dir, 'GTSRB', 'raw', 'train-images-idx3-ubyte')
-    # train_labels = os.path.join(data_dir, 'GTSRB', 'raw', 'train-labels-idx1-ubyte')
-    # test_images = os.path.join(data_dir, 'GTSRB', 'raw', 't10k-images-idx3-ubyte')
-    # test_labels = os.path.join(data_dir, 'GTSRB', 'raw', 't10k-labels-idx1-ubyte')
-    train_images = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'train-images-idx3-ubyte')
-    train_labels = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'train-labels-idx1-ubyte')
-    test_images = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'test-images-idx3-ubyte')
-    test_labels = os.path.join(data_dir, 'LEGO', 'dataset_LEGO_non_rotated', 'test-labels-idx1-ubyte')
+    train_images = os.path.join(data_dir, 'train-images-idx3-ubyte')
+    train_labels = os.path.join(data_dir, 'train-labels-idx1-ubyte')
+    test_images = os.path.join(data_dir, 'test-images-idx3-ubyte')
+    test_labels = os.path.join(data_dir, 'test-labels-idx1-ubyte')
 
-    train_set = CustomGTSRBDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
-    test_set = CustomGTSRBDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
+    train_set = CustomIDXDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
+    test_set =CustomIDXDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
 
     return train_set, test_set
 
@@ -205,4 +199,3 @@ def load_data(dataset='cifar10', data_dir='./data', batch_size=128):
                                               num_workers=4)
 
     return train_loader, validation_loader, test_loader
-

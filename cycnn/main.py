@@ -29,11 +29,12 @@ import seaborn as sns
 
 def plot_confusion_matrix(cm, classes, save_path):
     """ Plot and save the confusion matrix as an image """
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(max(10, len(classes) // 2), max(8, len(classes) // 2)))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
     plt.xlabel("Predicted label")
     plt.ylabel("True label")
     plt.title("Confusion Matrix")
+    plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
 
@@ -41,7 +42,11 @@ def plot_confusion_matrix(cm, classes, save_path):
 def save_confusion_matrix(cm, train_set, test_set, output_dir):
     cm_path = os.path.join(output_dir, f"confusion_matrix_{train_set}_test_on_{test_set}.npy")
     np.save(cm_path, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_path.replace('.npy', '.png'))
+
+    num_classes = cm.shape[0]
+    class_labels = list(range(num_classes))
+
+    plot_confusion_matrix(cm, classes=class_labels, save_path=cm_path.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
 
 
@@ -143,10 +148,10 @@ def validate(model, device, criterion, test_loader, epoch, args):
     return validation_loss, accuracy
 
 
-def test(model, device, criterion, test_loader, args):
+def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
     test_loss, correct, num_data = 0, 0, 0
-
+    all_preds, all_labels = [], []
     with torch.no_grad():
         for batch_idx, (images, labels) in enumerate(test_loader):
 
@@ -160,8 +165,6 @@ def test(model, device, criterion, test_loader, args):
             if not args.get('use_prerotated_test_set', False):
                 print("Applying random rotation to test images.")
                 images = image_transforms.random_rotate(images)
-            else:
-                print("Skipping random rotation (using prerotated test set).")
 
             """Apply polar transforms"""
             if args['polar_transform'] is not None:
@@ -179,6 +182,9 @@ def test(model, device, criterion, test_loader, args):
             correct += pred.eq(labels.view_as(pred)).sum().item()
             num_data += len(images)
 
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(pred.cpu().numpy())
+
     test_loss /= len(test_loader)
     accuracy = 100. * correct / num_data
 
@@ -186,13 +192,14 @@ def test(model, device, criterion, test_loader, args):
     print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
         test_loss, correct, num_data, accuracy))
 
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
+    # Dynamically determine number of classes (e.g. GTSRB has 43)
+    num_classes = len(set(all_labels).union(set(all_preds)))
+    cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
 
-    cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
+    cm_file = os.path.join(args['output_dir'], 'confusion_matrix.npy')
     np.save(cm_file, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_file.replace('.npy', '.png'))
+    plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
-
 
     return test_loss, accuracy
 
@@ -238,7 +245,7 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
-    print(model)
+    # print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
     ))
@@ -261,6 +268,9 @@ def main():
     #     model.to(device)
     #     test_loss, test_accuracy = test(model, device, criterion, test_loader, args)
     #     sys.exit(0)
+    train_loader = None
+    validation_loader = None
+    test_loader = None
 
     """Load data"""
     if args['test'] and args['test_data_dir'] is not None:
@@ -379,3 +389,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    

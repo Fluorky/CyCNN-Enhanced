@@ -58,4 +58,3 @@ def get_model(model, dataset, classify=True):
         model = cyresnet.cyresnet1202(dataset=dataset)
 
     return model
-
