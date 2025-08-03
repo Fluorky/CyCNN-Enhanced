@@ -202,3 +202,11 @@ tags
 
 !cycnn/saves/.gitkeep
 !cycnn/logs/.gitkeep
+
+.venv/
+venv/
+venv_cp/
+logs/
+saves/
+data_backup
+data/
