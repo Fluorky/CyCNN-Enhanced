@@ -46,9 +46,12 @@ class CyVGG(nn.Module):
 
 
     def forward(self, x):
+        if not hasattr(self, "_debug_printed"):
+            print(f"[MODEL INPUT] {x.shape}")
+            self._debug_printed = True
         x = self.features(x)
         x = self.avgpool(x)  # added
-        x = torch.flatten(x, 1)  # changed old below
+        x = torch.flatten(x, 1)  # changed, old below
         # x = x.view(x.size(0), -1) 3 old
         if self.classify:
             x = self.classifier(x)
@@ -58,7 +61,17 @@ class CyVGG(nn.Module):
 
 def make_layers(cfg, dataset='mnist', batch_norm=False):
     layers = []
-    in_channels = 1 if dataset == 'mnist' else 3
+
+    def get_input_channels(dataset):
+        print(f"DATASET --->{dataset}")
+
+        # if dataset in ['GTSRB-custom', 'LEGO']:
+        if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
+            return 1
+        print("RETURN 3")
+        return 3
+
+    in_channels = get_input_channels(dataset)
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -83,7 +96,7 @@ cfg = {
 def get_num_classes(dataset):
     if dataset == 'cifar100':
         return 100
-    elif dataset in ['mnist', 'cifar10']:
+    elif dataset in ['mnist-custom', 'mnist', 'cifar10']:
         return 10
     elif dataset.startswith('GTSRB'):
         return 43
