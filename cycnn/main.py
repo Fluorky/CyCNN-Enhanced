@@ -57,9 +57,8 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
     for batch_idx, (images, labels) in enumerate(train_loader):
 
         """Resize images to fit into the model"""
-        # images = image_transforms.resize_images(images, 32, 32)
-        # images = image_transforms.resize_images(images, 64, 64)
-        # images = image_transforms.resize_images(images, 128, 128)
+        if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+            images = image_transforms.resize_images(images, 32, 32)
 
         """Apply image transforms"""
         if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -74,6 +73,8 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
             images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
         images, labels = images.to(device), labels.to(device)
+        if batch_idx == 0:
+            print(f"[TRAIN] shape before model: {images.shape}")
         result = model(images)
 
         if args['model'] == 'hnet':
@@ -101,13 +102,10 @@ def validate(model, device, criterion, test_loader, epoch, args):
 
     with torch.no_grad():
         for batch_idx, (images, labels) in enumerate(test_loader):
-
-            if args['dataset'] == 'svhn':
-                labels[labels == 9] = 6
-
+            
             """Resize images to fit into the model"""
-            # images = image_transforms.resize_images(images, 64, 64)
-            # images = image_transforms.resize_images(images, 32, 32)
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:
+                images = image_transforms.resize_images(images, 32, 32)
 
             """Apply image transforms"""
             if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -159,8 +157,8 @@ def test(model, device, criterion, test_loader, args, output_dir):
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            # images = image_transforms.resize_images(images, 32, 32)
-            # images = image_transforms.resize_images(images, 64, 64)
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+                images = image_transforms.resize_images(images, 32, 32)
 
             if not args.get('use_prerotated_test_set', False):
                 print("Applying random rotation to test images.")
@@ -245,6 +243,8 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
+
+
     # print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
