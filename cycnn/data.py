@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from custom_loader import CustomIDXDataset
+from custom_loader import CustomIDXDataset, CustomNPYDataset
 
 
 def load_mnist_data(data_dir='./data', batch_size=128):
@@ -62,8 +62,8 @@ def load_custom_mnist_data(data_dir='./data', batch_size=128):
         
     train_images = os.path.join(data_dir, 'train-images-idx3-ubyte')
     train_labels = os.path.join(data_dir, 'train-labels-idx1-ubyte')
-    test_images = os.path.join(data_dir, 't10k-images-idx3-ubyte')
-    test_labels = os.path.join(data_dir, 't10k-labels-idx1-ubyte')
+    test_images = os.path.join(data_dir, 'test-images-idx3-ubyte')
+    test_labels = os.path.join(data_dir, 'test-labels-idx1-ubyte')
     
     train_set = CustomIDXDataset(images_path=train_images, labels_path=train_labels, transform=train_transform)
     test_set = CustomIDXDataset(images_path=test_images, labels_path=test_labels, transform=test_transform)
@@ -153,6 +153,29 @@ def load_svhn_data(data_dir='./data', batch_size=128):
 
     return train_set, test_set
 
+def load_custom_GTSRB_RGB_data(data_dir='./data', batch_size=128):
+    import os
+
+    # Stats for the GTSRB RGB
+    normalize_mean = (0.3403, 0.3121, 0.3214)
+    normalize_std = (0.2724, 0.2608, 0.2669)
+
+    transform = transforms.Compose([
+        transforms.Normalize(normalize_mean, normalize_std)
+    ])
+
+    train_set = CustomNPYDataset(
+        images_path=os.path.join(data_dir, 'train_images.npy'),
+        labels_path=os.path.join(data_dir, 'train_labels.npy'),
+        transform=transform
+    )
+    test_set = CustomNPYDataset(
+        images_path=os.path.join(data_dir, 'test_images.npy'),
+        labels_path=os.path.join(data_dir, 'test_labels.npy'),
+        transform=transform
+    )
+
+    return train_set, test_set
 
 def load_data(dataset='cifar10', data_dir='./data', batch_size=128):
 
@@ -167,6 +190,9 @@ def load_data(dataset='cifar10', data_dir='./data', batch_size=128):
 
     elif dataset == 'GTSRB-custom':
         train_set, test_set = load_custom_GTSRB_data(data_dir=data_dir, batch_size=batch_size)
+    
+    elif dataset == 'GTSRB-RGB-custom':
+        train_set, test_set = load_custom_GTSRB_RGB_data(data_dir=data_dir, batch_size=batch_size)
     
     elif dataset == 'LEGO':
         train_set, test_set = load_LEGO_data(data_dir=data_dir, batch_size=batch_size)
