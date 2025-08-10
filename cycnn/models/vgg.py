@@ -43,17 +43,23 @@ class VGG(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), -1)
-
+        x = self.avgpool(x)  # added
+        x = torch.flatten(x, 1)  # changed, old below
+        # x = x.view(x.size(0), -1) 3 old
         if self.classify:
             x = self.classifier(x)
 
         return x
 
+def get_input_channels(dataset):
+    if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
+        return 1
+    return 3
 
 def make_layers(cfg, dataset='mnist', batch_norm=False):
     layers = []
-    in_channels = 1 if dataset == 'mnist' else 3
+
+    in_channels = get_input_channels(dataset)
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
