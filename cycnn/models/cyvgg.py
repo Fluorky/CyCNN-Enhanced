@@ -63,12 +63,8 @@ def make_layers(cfg, dataset='mnist', batch_norm=False):
     layers = []
 
     def get_input_channels(dataset):
-        print(f"DATASET --->{dataset}")
-
-        # if dataset in ['GTSRB-custom', 'LEGO']:
         if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
             return 1
-        print("RETURN 3")
         return 3
 
     in_channels = get_input_channels(dataset)
@@ -101,7 +97,7 @@ def get_num_classes(dataset):
     elif dataset.startswith('GTSRB'):
         return 43
     elif dataset.startswith('LEGO'):
-        return 50 #40
+        return 50
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
