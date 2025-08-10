@@ -70,7 +70,6 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 16
 
-        # in_channels = 1 if dataset == 'mnist' else 3
         in_channels = get_input_channels(dataset)
         
         self.conv1 = nn.Conv2d(in_channels, 16, kernel_size=3, stride=1, padding=1, bias=False)

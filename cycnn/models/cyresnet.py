@@ -89,7 +89,6 @@ class CyResNet(nn.Module):
         super(CyResNet, self).__init__()
         self.in_planes = 16
 
-        # in_channels = 1 if dataset == 'mnist' else 3
         in_channels = get_input_channels(dataset)
         """CyConv2d instead of nn.Conv2d"""
         self.conv1 = CyConv2d(in_channels, 16, kernel_size=3, stride=1, padding=1)
