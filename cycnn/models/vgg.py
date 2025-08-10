@@ -5,6 +5,7 @@ https://github.com/chengyangfu/pytorch-vgg-cifar10/blob/master/vgg.py
 """
 import math
 
+import torch
 import torch.nn as nn
 import torch.nn.init as init
 
@@ -22,6 +23,8 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         self.features = features
         self.classify = classify
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # added to resolve 64x64 and more
 
         if self.classify:
             self.classifier = nn.Sequential(
