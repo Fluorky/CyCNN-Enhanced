@@ -24,6 +24,19 @@ def get_input_channels(dataset):
         return 1
     return 3
 
+def get_num_classes(dataset):
+    if dataset == 'cifar100':
+        return 100
+    elif dataset in ['mnist-custom', 'mnist', 'cifar10']:
+        return 10
+    elif dataset.startswith('GTSRB'):
+        return 43
+    elif dataset.startswith('LEGO'):
+        return 50 # 40
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
+
+
 class LambdaLayer(nn.Module):
     def __init__(self, lambd):
         super(LambdaLayer, self).__init__()
@@ -102,30 +115,24 @@ class ResNet(nn.Module):
 
 
 def resnet20(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [3, 3, 3], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [3, 3, 3], dataset=dataset, num_classes=get_num_classes(dataset))
 
 
 def resnet32(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [5, 5, 5], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [5, 5, 5], dataset=dataset, num_classes=get_num_classes(dataset))
 
 
 def resnet44(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [7, 7, 7], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [7, 7, 7], dataset=dataset, num_classes=get_num_classes(dataset))
 
 
 def resnet56(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [9, 9, 9], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [9, 9, 9], dataset=dataset, num_classes=get_num_classes(dataset))
 
 
 def resnet110(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [18, 18, 18], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [18, 18, 18], dataset=dataset, num_classes=get_num_classes(dataset))
 
 
 def resnet1202(dataset='mnist'):
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return ResNet(BasicBlock, [200, 200, 200], dataset=dataset, num_classes=num_classes)
+    return ResNet(BasicBlock, [200, 200, 200], dataset=dataset, num_classes=get_num_classes(dataset))
