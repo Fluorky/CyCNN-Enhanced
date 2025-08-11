@@ -99,7 +99,7 @@ def validate(model, device, criterion, test_loader, epoch, args):
     model.eval()
     validation_loss, correct, num_data = 0, 0, 0
 
-    with torch.no_grad():
+    with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
 
             if args['dataset'] == 'svhn':
@@ -130,14 +130,14 @@ def validate(model, device, criterion, test_loader, epoch, args):
             loss = criterion(result, labels)
 
             validation_loss += loss.float()
-            pred = result.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            pred = result.argmax(dim=1, keepdim=True).clone() # get the index of the max log-probability
 
             pred = pred.view(pred.size()[0])
 
             correct += pred.eq(labels.view_as(pred)).sum().item()
             num_data += len(images)
 
-    validation_loss /= len(test_loader)
+    validation_loss = validation_loss.clone() / len(test_loader)
     accuracy = 100. * correct / num_data
 
     """Print Validation Summary"""
@@ -152,7 +152,7 @@ def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
     test_loss, correct, num_data = 0, 0, 0
     all_preds, all_labels = [], []
-    with torch.no_grad():
+    with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
 
             if args['dataset'] == 'svhn':
@@ -175,7 +175,7 @@ def test(model, device, criterion, test_loader, args, output_dir):
 
             loss = criterion(result, labels)
             test_loss += loss.float()  # sum up batch loss
-            pred = result.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            pred = result.argmax(dim=1, keepdim=True).clone()  # get the index of the max log-probability
 
             pred = pred.view(pred.size()[0])
 
@@ -185,7 +185,8 @@ def test(model, device, criterion, test_loader, args, output_dir):
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(pred.cpu().numpy())
 
-    test_loss /= len(test_loader)
+    # test_loss /= len(test_loader)
+    test_loss = test_loss.clone() / len(test_loader)
     accuracy = 100. * correct / num_data
 
     """Print Test Summary"""
