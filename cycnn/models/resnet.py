@@ -19,6 +19,11 @@ def _weights_init(m):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         init.kaiming_normal_(m.weight)
 
+def get_input_channels(dataset):
+    if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
+        return 1
+    return 3
+
 class LambdaLayer(nn.Module):
     def __init__(self, lambd):
         super(LambdaLayer, self).__init__()
@@ -65,8 +70,8 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 16
 
-        in_channels = 1 if dataset == 'mnist' else 3
-
+        in_channels = get_input_channels(dataset)
+        
         self.conv1 = nn.Conv2d(in_channels, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
         self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)

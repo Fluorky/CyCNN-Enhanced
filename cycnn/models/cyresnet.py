@@ -22,7 +22,7 @@ __all__ = ['CyResNet', 'cyresnet20', 'cyresnet32', 'cyresnet44', 'cyresnet56', '
 def get_num_classes(dataset):
     if dataset == 'cifar100':
         return 100
-    elif dataset in ['mnist', 'cifar10']:
+    elif dataset in ['mnist-custom', 'mnist', 'cifar10']:
         return 10
     elif dataset.startswith('GTSRB'):
         return 43
@@ -30,6 +30,11 @@ def get_num_classes(dataset):
         return 50 # 40
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
+
+def get_input_channels(dataset):
+    if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
+        return 1
+    return 3
 
 def _weights_init(m):
     classname = m.__class__.__name__
@@ -84,8 +89,7 @@ class CyResNet(nn.Module):
         super(CyResNet, self).__init__()
         self.in_planes = 16
 
-        in_channels = 1 if dataset == 'mnist' else 3
-
+        in_channels = get_input_channels(dataset)
         """CyConv2d instead of nn.Conv2d"""
         self.conv1 = CyConv2d(in_channels, 16, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(16)
