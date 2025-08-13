@@ -77,3 +77,4 @@ class CustomNPYDataset(Dataset):
             image = self.transform(image)
 
         return image, int(label)
+    
