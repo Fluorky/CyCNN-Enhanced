@@ -209,19 +209,35 @@ def load_data(dataset='cifar10', data_dir='./data', batch_size=128):
     """Give 10% of the train set to validation set"""
     train_set, validation_set = torch.utils.data.random_split(train_set, [len(train_set) - len(train_set) // 10, len(train_set) // 10])
 
+    _num_workers = 8  
+    _pin_memory = True
+    _persistent_workers = True if _num_workers > 0 else False
+    _prefetch_factor = 4 if _num_workers > 0 else None
+
+    common_kwargs = dict(
+        num_workers=_num_workers,
+        pin_memory=_pin_memory,
+        # persistent_workers=_persistent_workers,
+        # prefetch_factor=_prefetch_factor,
+    )
+   
+    common_kwargs = {k: v for k, v in common_kwargs.items() if v is not None}
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=batch_size,
                                                shuffle=True,
-                                               num_workers=4)
+                                               drop_last=True, 
+                                               **common_kwargs)
 
     validation_loader = torch.utils.data.DataLoader(validation_set,
                                                     batch_size=batch_size,
                                                     shuffle=True,
-                                                    num_workers=4)
+                                                    drop_last=False,
+                                                    **common_kwargs)
 
     test_loader = torch.utils.data.DataLoader(test_set,
                                               batch_size=batch_size,
                                               shuffle=False,
-                                              num_workers=4)
+                                              drop_last=False,
+                                              **common_kwargs)
 
     return train_loader, validation_loader, test_loader
