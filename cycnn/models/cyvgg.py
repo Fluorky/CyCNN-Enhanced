@@ -46,9 +46,9 @@ class CyVGG(nn.Module):
 
 
     def forward(self, x):
-        if not hasattr(self, "_debug_printed"):
-            print(f"[MODEL INPUT] {x.shape}")
-            self._debug_printed = True
+        # if not hasattr(self, "_debug_printed"):
+        #     print(f"[MODEL INPUT] {x.shape}")
+        #     self._debug_printed = True
         x = self.features(x)
         x = self.avgpool(x)  # added
         x = torch.flatten(x, 1)  # changed, old below
