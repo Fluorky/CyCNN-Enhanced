@@ -17,7 +17,7 @@ train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
 
-models = ["cyvgg19", "cyresnet56"]
+models = ["cyvgg19", "cyresnet56", "vgg19", "resnet56"]
 polar_transforms = ["logpolar", "linearpolar"]
 
 overwrite_logs = False
