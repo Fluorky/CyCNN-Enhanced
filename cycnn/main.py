@@ -26,6 +26,9 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.allow_tf32 = True
+torch.backends.cuda.matmul.allow_tf32 = True
 
 def plot_confusion_matrix(cm, classes, save_path):
     """ Plot and save the confusion matrix as an image """
@@ -52,14 +55,13 @@ def save_confusion_matrix(cm, train_set, test_set, output_dir):
 
 def train(model, device, optimizer, criterion, train_loader, epoch, args):
     model.train()
-    train_loss = 0
-
+    # train_loss = 0
+    loss_sum = torch.zeros((), device=device)
     for batch_idx, (images, labels) in enumerate(train_loader):
 
         """Resize images to fit into the model"""
-        # images = image_transforms.resize_images(images, 32, 32)
-        # images = image_transforms.resize_images(images, 64, 64)
-        # images = image_transforms.resize_images(images, 128, 128)
+        if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+            images = image_transforms.resize_images(images, 32, 32)
 
         """Apply image transforms"""
         if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -73,7 +75,7 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
         if args['polar_transform'] is not None:
             images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-        images, labels = images.to(device), labels.to(device)
+        images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
         result = model(images)
 
         if args['model'] == 'hnet':
@@ -81,23 +83,28 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
 
         loss = criterion(result, labels)
 
-        train_loss += loss.item()
+        loss_sum += loss.detach() 
+        # train_loss += loss.item()
 
         # backward
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
 
-    """Print training summary"""
-    print('[Epoch {}] Train Loss: {:.6f}'.format(
-        epoch, train_loss / len(train_loader)))
-
+    # """Print training summary"""
+    # print('[Epoch {}] Train Loss: {:.6f}'.format(
+    #     epoch, train_loss / len(train_loader)))
+    train_loss = (loss_sum / len(train_loader)).item()
+    print('[Epoch {}] Train Loss: {:.6f}'.format(epoch, train_loss))
     return train_loss
 
 
 def validate(model, device, criterion, test_loader, epoch, args):
     model.eval()
-    validation_loss, correct, num_data = 0, 0, 0
+    # validation_loss, correct, num_data = 0, 0, 0
+    val_loss_sum = torch.zeros((), device=device)
+    correct = torch.zeros((), device=device, dtype=torch.long)
+    num_data = 0
 
     with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
@@ -106,8 +113,8 @@ def validate(model, device, criterion, test_loader, epoch, args):
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            # images = image_transforms.resize_images(images, 64, 64)
-            # images = image_transforms.resize_images(images, 32, 32)
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+                images = image_transforms.resize_images(images, 32, 32)
 
             """Apply image transforms"""
             if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -121,7 +128,7 @@ def validate(model, device, criterion, test_loader, epoch, args):
             if args['polar_transform'] is not None:
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
             result = model(images)
 
             if args['model'] == 'hnet':
@@ -129,28 +136,45 @@ def validate(model, device, criterion, test_loader, epoch, args):
 
             loss = criterion(result, labels)
 
-            validation_loss += loss.float()
-            pred = result.argmax(dim=1, keepdim=True).clone() # get the index of the max log-probability
+            val_loss_sum += loss.detach()
+            pred = result.argmax(dim=1)
+            correct += (pred == labels).sum()
+            num_data += labels.size(0)
 
-            pred = pred.view(pred.size()[0])
+    validation_loss = (val_loss_sum / len(test_loader)).item()
+    accuracy = (correct.float() * 100.0 / num_data).item()
 
-            correct += pred.eq(labels.view_as(pred)).sum().item()
-            num_data += len(images)
-
-    validation_loss = validation_loss.clone() / len(test_loader)
-    accuracy = 100. * correct / num_data
-
-    """Print Validation Summary"""
     print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
-        epoch, validation_loss,
-        correct, num_data, accuracy))
+        epoch, validation_loss, int(correct.item()), num_data, accuracy))
+    #         # validation_loss += loss.float()
+    #         # pred = result.argmax(dim=1, keepdim=True).clone() # get the index of the max log-probability
 
+    #         # pred = pred.view(pred.size()[0])
+
+    #         # correct += pred.eq(labels.view_as(pred)).sum().item()
+    #         # num_data += len(images)
+
+    # # validation_loss = validation_loss.clone() / len(test_loader)
+    # # accuracy = 100. * correct / num_data
+    # validation_loss = (val_loss_sum / len(test_loader)).item()
+    # accuracy = (correct.float() * 100.0 / num_data).item()
+
+    # # """Print Validation Summary"""
+    # # print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    # #     epoch, validation_loss,
+    # #     correct, num_data, accuracy))
+    # print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    #     epoch, validation_loss, int(correct.item()), num_data, accuracy))
     return validation_loss, accuracy
 
 
 def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
-    test_loss, correct, num_data = 0, 0, 0
+    # test_loss, correct, num_data = 0, 0, 0
+    # all_preds, all_labels = [], []
+    test_loss_sum = torch.zeros((), device=device)
+    correct = torch.zeros((), device=device, dtype=torch.long)
+    num_data = 0
     all_preds, all_labels = [], []
     with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
@@ -159,6 +183,8 @@ def test(model, device, criterion, test_loader, args, output_dir):
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+                images = image_transforms.resize_images(images, 32, 32)
             # images = image_transforms.resize_images(images, 32, 32)
             # images = image_transforms.resize_images(images, 64, 64)
 
@@ -170,34 +196,57 @@ def test(model, device, criterion, test_loader, args, output_dir):
             if args['polar_transform'] is not None:
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-            images, labels = images.to(device), labels.to(device)
-            result = model(images)
+            images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+          
+            logits = model(images)
+            loss = criterion(logits, labels)
 
-            loss = criterion(result, labels)
-            test_loss += loss.float()  # sum up batch loss
-            pred = result.argmax(dim=1, keepdim=True).clone()  # get the index of the max log-probability
+            test_loss_sum += loss.detach()
+            pred = logits.argmax(dim=1)
+            correct += (pred == labels).sum()
+            num_data += labels.size(0)
 
-            pred = pred.view(pred.size()[0])
+            all_labels.extend(labels.detach().cpu().numpy())
+            all_preds.extend(pred.detach().cpu().numpy())
+            # result = model(images)
+            # loss = criterion(result, labels)
+            # test_loss += loss.float()  # sum up batch loss
+            # pred = result.argmax(dim=1, keepdim=True).clone()  # get the index of the max log-probability
 
-            correct += pred.eq(labels.view_as(pred)).sum().item()
-            num_data += len(images)
+            # pred = pred.view(pred.size()[0])
 
-            all_labels.extend(labels.cpu().numpy())
-            all_preds.extend(pred.cpu().numpy())
+            # correct += pred.eq(labels.view_as(pred)).sum().item()
+            # num_data += len(images)
+
+            # all_labels.extend(labels.cpu().numpy())
+            # all_preds.extend(pred.cpu().numpy())
 
     # test_loss /= len(test_loader)
-    test_loss = test_loss.clone() / len(test_loader)
-    accuracy = 100. * correct / num_data
+    # test_loss = test_loss.clone() / len(test_loader)
+    # accuracy = 100. * correct / num_data
 
-    """Print Test Summary"""
+    # """Print Test Summary"""
+    # print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    #     test_loss, correct, num_data, accuracy))
+
+    # # Dynamically determine number of classes (e.g. GTSRB has 43)
+    # num_classes = len(set(all_labels).union(set(all_preds)))
+    # cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
+
+    # cm_file = os.path.join(args['output_dir'], 'confusion_matrix.npy')
+    # np.save(cm_file, cm)
+    # plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
+    # print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
+    test_loss = (test_loss_sum / len(test_loader)).item()
+    accuracy = (correct.float() * 100.0 / num_data).item()
+
     print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
-        test_loss, correct, num_data, accuracy))
+        test_loss, int(correct.item()), num_data, accuracy))
 
-    # Dynamically determine number of classes (e.g. GTSRB has 43)
     num_classes = len(set(all_labels).union(set(all_preds)))
     cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
-
-    cm_file = os.path.join(args['output_dir'], 'confusion_matrix.npy')
+    os.makedirs(output_dir, exist_ok=True)
+    cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
     np.save(cm_file, cm)
     plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
