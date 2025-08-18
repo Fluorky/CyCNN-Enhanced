@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 
 # === CONFIGURATION ===
-json_path = "train_test_scenarios_MNIST.json"
-logs_base = Path("logs/json_MNIST")
+# json_path = "train_test_scenarios_MNIST.json"
+# logs_base = Path("logs/json_MNIST")
+json_path = "train_test_scenarios_LEGO.json"
+logs_base = Path("logs/json_LEGO")
 
 train_log_dir = logs_base / "train"
 test_log_dir = logs_base / "test"
@@ -27,7 +29,7 @@ expected_cm_files = set()
 
 for model in models:
     for activation in activations:
-        prefix = f"mnist-custom-{model}-{activation}"
+        prefix = f"LEGO-custom-{model}-{activation}"
         for train_key, test_keys in scenario.items():
             train_id = normalize_key(train_key)
             train_file = train_log_dir / f"{prefix}_{train_id}_train.txt"
