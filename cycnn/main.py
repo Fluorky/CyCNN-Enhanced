@@ -26,14 +26,18 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.allow_tf32 = True
+torch.backends.cuda.matmul.allow_tf32 = True
 
 def plot_confusion_matrix(cm, classes, save_path):
     """ Plot and save the confusion matrix as an image """
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(max(10, len(classes) // 2), max(8, len(classes) // 2)))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=classes, yticklabels=classes)
     plt.xlabel("Predicted label")
     plt.ylabel("True label")
     plt.title("Confusion Matrix")
+    plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
 
@@ -41,18 +45,23 @@ def plot_confusion_matrix(cm, classes, save_path):
 def save_confusion_matrix(cm, train_set, test_set, output_dir):
     cm_path = os.path.join(output_dir, f"confusion_matrix_{train_set}_test_on_{test_set}.npy")
     np.save(cm_path, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_path.replace('.npy', '.png'))
+
+    num_classes = cm.shape[0]
+    class_labels = list(range(num_classes))
+
+    plot_confusion_matrix(cm, classes=class_labels, save_path=cm_path.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
 
 
 def train(model, device, optimizer, criterion, train_loader, epoch, args):
     model.train()
-    train_loss = 0
-
+    # train_loss = 0
+    loss_sum = torch.zeros((), device=device)
     for batch_idx, (images, labels) in enumerate(train_loader):
 
         """Resize images to fit into the model"""
-        images = image_transforms.resize_images(images, 32, 32)
+        if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+            images = image_transforms.resize_images(images, 32, 32)
 
         """Apply image transforms"""
         if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -66,7 +75,7 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
         if args['polar_transform'] is not None:
             images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-        images, labels = images.to(device), labels.to(device)
+        images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
         result = model(images)
 
         if args['model'] == 'hnet':
@@ -74,32 +83,38 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
 
         loss = criterion(result, labels)
 
-        train_loss += loss.item()
+        loss_sum += loss.detach() 
+        # train_loss += loss.item()
 
         # backward
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
 
-    """Print training summary"""
-    print('[Epoch {}] Train Loss: {:.6f}'.format(
-        epoch, train_loss / len(train_loader)))
-
+    # """Print training summary"""
+    # print('[Epoch {}] Train Loss: {:.6f}'.format(
+    #     epoch, train_loss / len(train_loader)))
+    train_loss = (loss_sum / len(train_loader)).item()
+    print('[Epoch {}] Train Loss: {:.6f}'.format(epoch, train_loss))
     return train_loss
 
 
 def validate(model, device, criterion, test_loader, epoch, args):
     model.eval()
-    validation_loss, correct, num_data = 0, 0, 0
+    # validation_loss, correct, num_data = 0, 0, 0
+    val_loss_sum = torch.zeros((), device=device)
+    correct = torch.zeros((), device=device, dtype=torch.long)
+    num_data = 0
 
-    with torch.no_grad():
+    with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
 
             if args['dataset'] == 'svhn':
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            images = image_transforms.resize_images(images, 32, 32)
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+                images = image_transforms.resize_images(images, 32, 32)
 
             """Apply image transforms"""
             if args['augmentation'] is not None and 'scale' in args['augmentation']:
@@ -113,7 +128,7 @@ def validate(model, device, criterion, test_loader, epoch, args):
             if args['polar_transform'] is not None:
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
             result = model(images)
 
             if args['model'] == 'hnet':
@@ -121,84 +136,119 @@ def validate(model, device, criterion, test_loader, epoch, args):
 
             loss = criterion(result, labels)
 
-            validation_loss += loss.float()
-            pred = result.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            val_loss_sum += loss.detach()
+            pred = result.argmax(dim=1)
+            correct += (pred == labels).sum()
+            num_data += labels.size(0)
 
-            pred = pred.view(pred.size()[0])
+    validation_loss = (val_loss_sum / len(test_loader)).item()
+    accuracy = (correct.float() * 100.0 / num_data).item()
 
-            correct += pred.eq(labels.view_as(pred)).sum().item()
-            num_data += len(images)
-
-    validation_loss /= len(test_loader)
-    accuracy = 100. * correct / num_data
-
-    """Print Validation Summary"""
     print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
-        epoch, validation_loss,
-        correct, num_data, accuracy))
+        epoch, validation_loss, int(correct.item()), num_data, accuracy))
+    #         # validation_loss += loss.float()
+    #         # pred = result.argmax(dim=1, keepdim=True).clone() # get the index of the max log-probability
 
+    #         # pred = pred.view(pred.size()[0])
+
+    #         # correct += pred.eq(labels.view_as(pred)).sum().item()
+    #         # num_data += len(images)
+
+    # # validation_loss = validation_loss.clone() / len(test_loader)
+    # # accuracy = 100. * correct / num_data
+    # validation_loss = (val_loss_sum / len(test_loader)).item()
+    # accuracy = (correct.float() * 100.0 / num_data).item()
+
+    # # """Print Validation Summary"""
+    # # print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    # #     epoch, validation_loss,
+    # #     correct, num_data, accuracy))
+    # print('[Epoch {}] Validation loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    #     epoch, validation_loss, int(correct.item()), num_data, accuracy))
     return validation_loss, accuracy
 
 
-# def test(model, device, criterion, test_loader, args, output_dir, train_set, test_set):
 def test(model, device, criterion, test_loader, args, output_dir):
     model.eval()
-    test_loss, correct, num_data = 0, 0, 0
+    # test_loss, correct, num_data = 0, 0, 0
+    # all_preds, all_labels = [], []
+    test_loss_sum = torch.zeros((), device=device)
+    correct = torch.zeros((), device=device, dtype=torch.long)
+    num_data = 0
     all_preds, all_labels = [], []
-    with torch.no_grad():
+    with torch.inference_mode():
         for batch_idx, (images, labels) in enumerate(test_loader):
 
             if args['dataset'] == 'svhn':
                 labels[labels == 9] = 6
 
             """Resize images to fit into the model"""
-            images = image_transforms.resize_images(images, 32, 32)
+            if args['dataset'] in ['mnist', 'mnist-custom', 'svhn']:  
+                images = image_transforms.resize_images(images, 32, 32)
+            # images = image_transforms.resize_images(images, 32, 32)
+            # images = image_transforms.resize_images(images, 64, 64)
 
-            """Random rotation is always applied at testing"""
-            images = image_transforms.random_rotate(images)
+            if not args.get('use_prerotated_test_set', False):
+                print("Applying random rotation to test images.")
+                images = image_transforms.random_rotate(images)
 
             """Apply polar transforms"""
             if args['polar_transform'] is not None:
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
-            images, labels = images.to(device), labels.to(device)
-            result = model(images)
+            images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+          
+            logits = model(images)
+            loss = criterion(logits, labels)
 
-            loss = criterion(result, labels)
-            test_loss += loss.float()  # sum up batch loss
-            pred = result.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            test_loss_sum += loss.detach()
+            pred = logits.argmax(dim=1)
+            correct += (pred == labels).sum()
+            num_data += labels.size(0)
 
-            pred = pred.view(pred.size()[0])
+            all_labels.extend(labels.detach().cpu().numpy())
+            all_preds.extend(pred.detach().cpu().numpy())
+            # result = model(images)
+            # loss = criterion(result, labels)
+            # test_loss += loss.float()  # sum up batch loss
+            # pred = result.argmax(dim=1, keepdim=True).clone()  # get the index of the max log-probability
 
-            correct += pred.eq(labels.view_as(pred)).sum().item()
-            num_data += len(images)
-            all_preds.extend(pred.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+            # pred = pred.view(pred.size()[0])
 
-    test_loss /= len(test_loader)
-    accuracy = 100. * correct / num_data
+            # correct += pred.eq(labels.view_as(pred)).sum().item()
+            # num_data += len(images)
 
-    """Print Test Summary"""
-    print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
-        test_loss, correct, num_data, accuracy))
-    # num_classes = len(np.unique(all_labels))
+            # all_labels.extend(labels.cpu().numpy())
+            # all_preds.extend(pred.cpu().numpy())
+
+    # test_loss /= len(test_loader)
+    # test_loss = test_loss.clone() / len(test_loader)
+    # accuracy = 100. * correct / num_data
+
+    # """Print Test Summary"""
+    # print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+    #     test_loss, correct, num_data, accuracy))
+
+    # # Dynamically determine number of classes (e.g. GTSRB has 43)
+    # num_classes = len(set(all_labels).union(set(all_preds)))
     # cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
-    # # cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
-    # cm_path = f"confusion_matrix_{args['dataset']}_{args['model']}.npy"
-    # np.save(cm_path, cm)
 
-    # plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_path.replace('.npy', '.png'))
-    # print(f"Confusion Matrix saved as: {cm_path} and {cm_path.replace('.npy', '.png')}")
+    # cm_file = os.path.join(args['output_dir'], 'confusion_matrix.npy')
+    # np.save(cm_file, cm)
+    # plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
+    # print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
+    test_loss = (test_loss_sum / len(test_loader)).item()
+    accuracy = (correct.float() * 100.0 / num_data).item()
 
-    # save_confusion_matrix(all_labels, all_preds, train_set, test_set, args['output_dir'])
-    # cm = confusion_matrix(all_labels, all_preds)
-    # save_confusion_matrix(cm, train_set, test_set, output_dir)
-    
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(10)))
+    print('Test loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+        test_loss, int(correct.item()), num_data, accuracy))
 
+    num_classes = len(set(all_labels).union(set(all_preds)))
+    cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
+    os.makedirs(output_dir, exist_ok=True)
     cm_file = os.path.join(output_dir, 'confusion_matrix.npy')
     np.save(cm_file, cm)
-    plot_confusion_matrix(cm, classes=list(range(10)), save_path=cm_file.replace('.npy', '.png'))
+    plot_confusion_matrix(cm, classes=list(range(num_classes)), save_path=cm_file.replace('.npy', '.png'))
     print(f"Confusion Matrix saved as: {cm_file} and {cm_file.replace('.npy', '.png')}")
 
     return test_loss, accuracy
@@ -229,6 +279,7 @@ def main():
     parser.add_argument('--test-data-dir', type=str, default=None, help='Optional directory for test data.')
     parser.add_argument('--model-save-path', type=str, default=None, help='Path to save the trained model.')
     parser.add_argument('--output-dir', type=str, help='Output directory for confusion matrices.')
+    parser.add_argument('--use-prerotated-test-set', action='store_true', help='If set, disables test-time random rotation.')
 
     args = vars(parser.parse_args())
 
@@ -244,17 +295,32 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
-
+    # print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
     ))
 
     criterion = nn.CrossEntropyLoss()
 
-    train_loader, validation_loader, test_loader = None, None, None
     # """Load data """
     # train_loader, validation_loader, test_loader = \
     #         load_data(dataset=args['dataset'], data_dir=args['data_dir'], batch_size=args['batch_size'])
+    
+    # print('{} Train data. {} Validation data. {} Test data.'.format(
+    #     len(train_loader.dataset), len(validation_loader.dataset), len(test_loader.dataset)
+    # ))
+
+    # """ Test-Only (Using saved .pt file) """
+    # if args['test']:
+    #     print('===> Testing {} with rotated dataset begin'.format(fname))
+    #     checkpoint = torch.load('saves/' + fname + '.pt')
+    #     model.load_state_dict(checkpoint['state_dict'])
+    #     model.to(device)
+    #     test_loss, test_accuracy = test(model, device, criterion, test_loader, args)
+    #     sys.exit(0)
+    train_loader = None
+    validation_loader = None
+    test_loader = None
 
     """Load data"""
     if args['test'] and args['test_data_dir'] is not None:
@@ -340,22 +406,21 @@ def main():
                 last_saved, max_acc = epoch, accuracy
                 # save_path = f'saves/{fname}{args["model_save_path"]}.pt' if args['model_save_path'] else f'saves/{fname}.pt'
                 save_path = args['model_save_path'] if args['model_save_path'] else f'saves/{fname}.pt'
-                torch.save({
-                    'state_dict': model.state_dict(),
-                    'acc': max_acc,
-                    'epoch': epoch,
-                }, save_path)
-                print(f"💾 Model saved at: {save_path}")
-
 
                 # print('Saving model checkpoint to saves/{}.pt'.format(fname))
-                
 
                 # torch.save({
                 #     'state_dict': model.state_dict(),
                 #     'acc': max_acc,
                 #     'epoch': epoch,
                 # }, 'saves/' + fname + '.pt')
+                
+                torch.save({
+                    'state_dict': model.state_dict(),
+                    'acc': max_acc,
+                    'epoch': epoch,
+                }, save_path)
+                print(f"💾 Model saved at: {save_path}")
 
             """Elapsed time per epoch"""
             end_time = time.time()
@@ -374,3 +439,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    

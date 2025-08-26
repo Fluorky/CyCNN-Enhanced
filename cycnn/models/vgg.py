@@ -5,6 +5,7 @@ https://github.com/chengyangfu/pytorch-vgg-cifar10/blob/master/vgg.py
 """
 import math
 
+import torch
 import torch.nn as nn
 import torch.nn.init as init
 
@@ -12,6 +13,18 @@ __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
     'vgg19_bn', 'vgg19',
 ]
+
+def get_num_classes(dataset):
+    if dataset == 'cifar100':
+        return 100
+    elif dataset in ['mnist-custom', 'mnist', 'cifar10']:
+        return 10
+    elif dataset.startswith('GTSRB'):
+        return 43
+    elif dataset.startswith('LEGO'):
+        return 50 # 40
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
 
 
 class VGG(nn.Module):
@@ -22,6 +35,8 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         self.features = features
         self.classify = classify
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # added to resolve 64x64 and more
 
         if self.classify:
             self.classifier = nn.Sequential(
@@ -43,17 +58,23 @@ class VGG(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), -1)
-
+        x = self.avgpool(x)  # added
+        x = torch.flatten(x, 1)  # changed, old below
+        # x = x.view(x.size(0), -1) 3 old
         if self.classify:
             x = self.classifier(x)
 
         return x
 
+def get_input_channels(dataset):
+    if dataset in ['mnist', 'mnist-custom', 'GTSRB-custom', 'LEGO']:
+        return 1
+    return 3
 
 def make_layers(cfg, dataset='mnist', batch_norm=False):
     layers = []
-    in_channels = 1 if dataset == 'mnist' else 3
+
+    in_channels = get_input_channels(dataset)
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -78,47 +99,40 @@ cfg = {
 
 def vgg11(classify=True, dataset='mnist'):
     """VGG 11-layer model (configuration "A")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['A'], dataset=dataset), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['A'], dataset=dataset),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg11_bn(classify=True, dataset='mnist'):
     """VGG 11-layer model (configuration "A") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['A'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['A'], dataset=dataset, batch_norm=True),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg13(classify=True, dataset='mnist'):
     """VGG 13-layer model (configuration "B")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['B'], dataset=dataset), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['B'], dataset=dataset),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg13_bn(classify=True, dataset='mnist'):
     """VGG 13-layer model (configuration "B") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['B'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['B'], dataset=dataset, batch_norm=True),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg16(classify=True, dataset='mnist'):
     """VGG 16-layer model (configuration "D")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['D'], dataset=dataset), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['D'], dataset=dataset),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg16_bn(classify=True, dataset='mnist'):
     """VGG 16-layer model (configuration "D") with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['D'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['D'], dataset=dataset, batch_norm=True),  num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg19(classify=True, dataset='mnist'):
     """VGG 19-layer model (configuration "E")"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['E'], dataset=dataset), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['E'], dataset=dataset), num_classes=get_num_classes(dataset), classify=classify)
 
 
 def vgg19_bn(classify=True, dataset='mnist'):
     """VGG 19-layer model (configuration 'E') with batch normalization"""
-    num_classes = 100 if dataset == 'cifar100' else 10
-    return VGG(make_layers(cfg['E'], dataset=dataset, batch_norm=True), num_classes=num_classes, classify=classify)
+    return VGG(make_layers(cfg['E'], dataset=dataset, batch_norm=True), num_classes=get_num_classes(dataset), classify=classify)
+    

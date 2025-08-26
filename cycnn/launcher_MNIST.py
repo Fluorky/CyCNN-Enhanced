@@ -1,7 +1,7 @@
 import os
 import json
 
-with open("train_test_scenarios.json") as f:
+with open("train_test_scenarios_MNIST.json") as f:
     train_test_dict = json.load(f)
 
 main_script = "main.py"
@@ -12,14 +12,14 @@ merged_dir = base_data_dir
 dataset_mnist_non_rotated = os.path.join(base_data_dir, "dataset_mnist_non_rotated")
 
 base_save_dir = "./saves/MNIST/"
-base_log_dir = "./logs/json_4/"
+base_log_dir = "./logs/json_MNIST/"
 # base_log_dir = "./logs/json_4_copy/"
 train_log_dir = os.path.join(base_log_dir, "train")
 test_log_dir = os.path.join(base_log_dir, "test")
 cm_log_dir = os.path.join(base_log_dir, "confusion_matrices")
 
 # models = ["cyvgg69"]
-models = ["cyvgg19", "cyresnet56"]
+models = ["cyvgg19", "cyresnet56", "vgg19", "resnet56"]
 polar_transforms = ["logpolar", "linearpolar"]
 
 overwrite_logs = False
@@ -28,8 +28,8 @@ overwrite_models = False
 required_files = [
     "train-images-idx3-ubyte",
     "train-labels-idx1-ubyte",
-    "t10k-images-idx3-ubyte",
-    "t10k-labels-idx1-ubyte",
+    "test-images-idx3-ubyte",
+    "test-labels-idx1-ubyte",
 ]
 
 
@@ -50,6 +50,7 @@ def run_command(cmd, log_file=None):
 
 def generate_model_save_path(model_name, polar_transform, train_set):
     fname = f"mnist-custom-{model_name}-{polar_transform}_{train_set}.pt"
+    os.makedirs(base_save_dir, exist_ok=True)
     return os.path.join(base_save_dir, fname)
 
 
@@ -59,6 +60,7 @@ def main():
             for train_set, test_sets in train_test_dict.items():
                 train_data_dir = os.path.join(merged_dir, train_set)
                 train_set_safe = train_set.replace("/", "_")
+                os.makedirs(base_log_dir, exist_ok=True)
                 train_log_file = os.path.join(train_log_dir, f"mnist-custom-{model_name}-{polar_transform}_{train_set_safe}_train.txt")
                 model_save_path = generate_model_save_path(model_name, polar_transform, train_set_safe)
                 cm_output_dir = os.path.join(cm_log_dir, train_set_safe)
@@ -106,7 +108,7 @@ def main():
                         f"--data-dir={train_data_dir} "
                         f"--test-data-dir={test_data_dir} "
                         f"--output-dir={cm_output_dir} "
-                        f"--model-path={model_save_path}"
+                        f"--model-path={model_save_path} --use-prerotated-test-set"
                     )
                     run_command(test_cmd, test_log_file)
 
