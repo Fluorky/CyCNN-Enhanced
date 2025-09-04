@@ -8,10 +8,10 @@ VENVPY = "venv/bin/python"
 DRIVER = "optuna_driver_universal.py"
 
 DATASETS = [
-    # {
-    #     "dataset_key": "mnist-custom",
-    #     "baseline_dir": "./data/MNIST_WIN/dataset_mnist_non_rotated",
-    # }
+    {
+        "dataset_key": "mnist-custom",
+        "baseline_dir": "./data/MNIST_WIN/dataset_mnist_non_rotated",
+    },
     {
         "dataset_key": "LEGO",
         "baseline_dir": "./data/LEGO_WIN/dataset_LEGO_non_rotated",
@@ -20,8 +20,8 @@ DATASETS = [
 
 MODELS = ["cyvgg19", "cyresnet56", "vgg19", "resnet56"]
 POLARS = ["logpolar", "linearpolar"]  
-TRIALS = 24
-EPOCHS = 3
+TRIALS = 25
+EPOCHS = 10
 BATCH_SIZE = 128
 RESULTS_ROOT = "./optuna_results"
 
@@ -76,7 +76,7 @@ def main():
                 }
                 summary_rows.append(row)
 
-    summary_csv = os.path.join(RESULTS_ROOT, "summary_LEGO.csv")
+    summary_csv = os.path.join(RESULTS_ROOT, "summary.csv")
     with open(summary_csv, "w", newline="") as f:
         writer = csv.DictWriter(
             f,
