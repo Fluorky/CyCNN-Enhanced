@@ -8,9 +8,13 @@ VENVPY = "venv/bin/python"
 DRIVER = "optuna_driver_universal.py"
 
 DATASETS = [
+    # {
+    #     "dataset_key": "mnist-custom",
+    #     "baseline_dir": "./data/MNIST_WIN/dataset_mnist_non_rotated",
+    # }
     {
-        "dataset_key": "mnist-custom",
-        "baseline_dir": "./data/MNIST_WIN/dataset_mnist_non_rotated",
+        "dataset_key": "LEGO",
+        "baseline_dir": "./data/LEGO_WIN/dataset_LEGO_non_rotated",
     }
 ]
 
@@ -72,7 +76,7 @@ def main():
                 }
                 summary_rows.append(row)
 
-    summary_csv = os.path.join(RESULTS_ROOT, "summary.csv")
+    summary_csv = os.path.join(RESULTS_ROOT, "summary_LEGO.csv")
     with open(summary_csv, "w", newline="") as f:
         writer = csv.DictWriter(
             f,
