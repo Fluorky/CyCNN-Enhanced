@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """
-Walk through MasterThesisLogsAll/json_*/confusion_matrices/**/confusion_matrix.npy
+Scan through MasterThesisLogsAll/json_*/confusion_matrices/**/confusion_matrix.npy
 and produce:
   - confusion_matrix_counts.png
   - confusion_matrix_row_norm.png
   - (optional) confusion_matrix_row_norm.npy
   - metrics.csv (overall accuracy + per-class recall)
 
-Class count is detected from the matrix shape, so it works for MNIST(10), GTSRB(43), LEGO(50), etc.
-Optionally reads class names from class_names.txt or class_names.csv if present.
-
-Adds:
-  - progress + detailed logs
-  - annotate ALL cells by default (even zeros)
-  - optional log-scale for counts heatmap
+Features:
+  * Works with MNIST(10), GTSRB(43), LEGO(50), etc. (class count is auto-detected)
+  * Optionally loads class names from class_names.txt or class_names.csv
+  * Annotates ALL cells by default (even zeros)
+  * Optional log scale for counts heatmap
+  * Progress bar with tqdm (falls back to simple prints if not available)
 """
 
 import argparse
@@ -24,7 +23,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-# headless backend (safe for WSL/servers)
+# Safe backend for WSL/servers
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -37,9 +36,10 @@ except Exception:
 
 
 def try_load_class_names(n: int, start_dir: Path) -> Optional[List[str]]:
+    """Look for class_names.txt or class_names.csv in current and parent dirs."""
     candidates = []
     cur = start_dir
-    for _ in range(3):
+    for _ in range(3):  # current + two parents
         candidates += [cur / "class_names.txt", cur / "class_names.csv"]
         cur = cur.parent
     for p in candidates:
@@ -74,6 +74,7 @@ def per_class_recall(cm: np.ndarray) -> np.ndarray:
 
 
 def autosize(n: int) -> Tuple[Tuple[int, int], bool]:
+    """Figure size + whether to show text (disable for very large N)."""
     if n <= 20:
         return (12, 10), True
     if n <= 60:
@@ -93,18 +94,26 @@ def plot_matrix(cm: np.ndarray,
                 vmin: float = 0.0,
                 vmax: Optional[float] = None,
                 annot_thresh: Optional[float] = None):
+    """Plot confusion matrix with full annotations (including zeros)."""
     n = cm.shape[0]
     (w, h), show_text = autosize(n)
-    fig = plt.figure(figsize=(w, h), dpi=200)
+    fig = plt.figure(figsize=(w, h), dpi=160)
     ax = plt.gca()
 
-    norm = None
+    # choose between log scale and linear scale
     if fmt == "counts" and logscale:
-        smallest_pos = cm[cm > 0].min() if np.any(cm > 0) else 1.0
-        norm = LogNorm(vmin=max(smallest_pos, 1.0), vmax=cm.max())
-        vmax = None
+        if np.any(cm > 0):
+            smallest_pos = float(cm[cm > 0].min())
+            vmin_log = max(smallest_pos, 1.0)
+            vmax_log = float(cm.max())
+        else:
+            vmin_log = 1.0
+            vmax_log = 1.0
+        norm = LogNorm(vmin=vmin_log, vmax=vmax_log)
+        im = ax.imshow(cm, interpolation="nearest", cmap="Blues", norm=norm)
+    else:
+        im = ax.imshow(cm, interpolation="nearest", cmap="Blues", vmin=vmin, vmax=vmax)
 
-    im = ax.imshow(cm, interpolation="nearest", cmap="Blues", vmin=vmin, vmax=vmax, norm=norm)
     plt.colorbar(im, fraction=0.046, pad=0.04)
 
     ax.set_title(title)
@@ -125,14 +134,15 @@ def plot_matrix(cm: np.ndarray,
     ax.grid(which="minor", color="w", linestyle="-", linewidth=0.2)
     ax.tick_params(axis="both", which="both", length=0)
 
-    # annotate all cells (even zeros)
+    # annotate ALL cells (zeros included)
     if show_text:
+        is_percent = (fmt == "percent")
         for i in range(n):
             for j in range(n):
                 val = cm[i, j]
-                if annot_thresh is not None and val < annot_thresh:
+                if (annot_thresh is not None) and (val < annot_thresh):
                     continue
-                text = f"{val:.2f}" if fmt == "percent" else f"{int(val)}"
+                text = f"{val:.2f}" if is_percent else f"{int(val)}"
                 ax.text(j, i, text, ha="center", va="center", fontsize=6, color="black")
 
     fig.tight_layout()
@@ -264,7 +274,7 @@ def main():
     print(f"Created/updated PNGs: {created_png}")
     print(f"Created/updated CSVs: {created_csv}")
     if args.save_norm_npy:
-        print(f"Created/updated row-norm NPys: {created_npy}")
+        print(f"Created/updated row-norm NPYs: {created_npy}")
     if errors:
         print(f"\nErrors ({len(errors)}):")
         for p, msg in errors[:10]:
