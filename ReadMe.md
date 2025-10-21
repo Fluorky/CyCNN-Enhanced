@@ -1,189 +1,223 @@
-# Environment
+# CyCNN - Updated Setup Guide (Ubuntu 24.04 / WSL2 / RTX 30xx)
 
-Below are environments that authors used.
+## System & Hardware (Host)
 
-- OS: CentOS Linux 7 (Core)
-- CUDA Driver Version: 410.48 
-- **gcc: 7.3.0**
-- **nvcc(CUDA): release 10.0, V10.0.130**
-- CPU: Intel(R) Xeon(R) Gold 6130F CPU @ 2.10GHz
-- GPU: NVIDIA Tesla V100
-- **Python: 3.6**
-- **PyTorch: 1.2.0**
-- **Torchvision: 0.4.0**
+- **CPU:** AMD Ryzen 7 5700X
+- **GPU:** NVIDIA GeForce RTX 3060 (12 GB) / RTX 3070 Ti (8 GB)
+- **OS:** Ubuntu 24.04.2 LTS on Windows 10 (WSL2)
+- **NVIDIA Driver:** 581.57 (`nvidia-smi`)
+- **Reported CUDA Version:** 13.0
+- **Python (recommended):** 3.10–3.11
+- **Docker (optional):** 24.x+ with NVIDIA Container Toolkit
 
-## Docker
+Note: Even if `nvidia-smi` reports “CUDA Version: 13.0”, the drivers are backward compatible - PyTorch wheels for cu12.x will work properly.
 
-We provide a docker image to simplify the setting. **Docker version >= 19.03 and CUDA driver of version at least 384.00 on the host is required for CUDA 10.0 functionality to work.**  [Link](http://collabnix.com/introducing-new-docker-cli-api-support-for-nvidia-gpus-under-docker-engine-19-03-0-beta-release/) might be helpful if docker and GPU related error occurs. Make sure that Nvidia GPU driver and container runtime are properly installed.
+---
 
+## Quick Start (Docker) - Recommended
 
-```plaintext
-# Pull docker image (~4.9GB)
-docker pull cycnn/dockerimage:version3
+The repository already includes:
+- `Dockerfile` - GPU build (CUDA 12.1)
+- `Dockerfile.cpu` - CPU-only build
+- `docker-compose.yml` - for convenient multi-service setup
+- `README-docker.md` - detailed container instructions
 
-# Run the container
-docker run --gpus all -it -d cycnn/dockerimage:version3 /bin/bash
+### 1. Install NVIDIA Container Toolkit
 
-# Check the container id and name
-docker ps -a
+On Ubuntu 24.04 inside WSL2:
 
-# Move the CyCNN source code to the container
-docker cp cycnn-codes.zip <CONTAINER-ID>:/root/
+```bash
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey |   sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit.gpg
+curl -fsSL https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list |   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-# Attach to the container
-docker attach <CONTAINER-NAME>
-
-# Unzip file
-cd root
-unzip cycnn-codes.zip -d cycnn
-
-# See the instructions (How to run) step 3.
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure
+sudo systemctl restart docker
 ```
 
+Check GPU access:
+```bash
+docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+```
 
-# Code Structure
-```plaintext
+---
+
+### 2. Build Images
+
+From the project root (where `cycnn/` and `cycnn-extension/` are located):
+
+```bash
+# GPU build
+docker build -t cycnn:gpu -f Dockerfile .
+
+# CPU build
+docker build -t cycnn:cpu -f Dockerfile.cpu .
+```
+
+or via Compose:
+```bash
+docker compose build cycnn-gpu
+docker compose build cycnn-cpu
+```
+
+---
+
+### 3. Run Containers
+
+GPU (help menu):
+```bash
+docker run --rm --gpus all   -v $PWD/cycnn/logs:/app/cycnn/logs   -v $PWD/cycnn/saves:/app/cycnn/saves   -v $PWD/data:/app/cycnn/data   cycnn:gpu python main.py --help
+```
+
+CPU (help menu):
+```bash
+docker run --rm   -v $PWD/cycnn/logs:/app/cycnn/logs   -v $PWD/cycnn/saves:/app/cycnn/saves   -v $PWD/data:/app/cycnn/data   cycnn:cpu python main.py --help
+```
+
+Example - train CyVGG19 on MNIST with LinearPolar transform:
+```bash
+docker run --rm --gpus all   -v $PWD/cycnn/logs:/app/cycnn/logs   -v $PWD/cycnn/saves:/app/cycnn/saves   -v $PWD/data:/app/cycnn/data   cycnn:gpu   python main.py --model cyvgg19 --train --dataset mnist                  --polar-transform linearpolar --batch-size 128 --num-epochs 10
+```
+
+For Ampere GPUs (RTX 3060 / 3070 Ti = `sm_86`), you can set:
+```bash
+-e TORCH_CUDA_ARCH_LIST="8.6"
+```
+
+---
+
+## Native Installation (without Docker)
+
+Works on Ubuntu 24.04 WSL2 with NVIDIA GPU passthrough enabled.
+Make sure `nvidia-smi` runs correctly inside Ubuntu.
+
+### 1. System dependencies
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3.11 python3.11-venv python3-pip     build-essential git libgl1 libglib2.0-0
+```
+
+### 2. Virtual environment
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+```
+
+### 3. Install PyTorch + dependencies
+
+Compatible CUDA 12.x wheels:
+```bash
+pip install --extra-index-url https://download.pytorch.org/whl/cu121     torch torchvision torchaudio
+pip install -r cycnn/requirements.txt
+```
+
+(Skip any `CyConv2d==...` entry in requirements if present.)
+
+### 4. Build the CyCNN extension
+
+```bash
+cd cycnn-extension
+export TORCH_CUDA_ARCH_LIST="8.6"   # optional, for Ampere
+python setup.py install
+cd ..
+```
+
+### 5. Verify installation
+
+```python
+python - <<'PY'
+import torch, importlib
+print("CUDA available:", torch.cuda.is_available())
+m = importlib.import_module("CyConv2d_cuda")
+print("CyConv2d_cuda OK:", hasattr(m, "forward"))
+PY
+```
+
+---
+
+## Project Structure
+
+```text
 cycnn/
 ├── cycnn/
-│   ├── data/                   (Directory for training data)
-│   ├── logs/                   (Directory for training logs)
-│   ├── models/                 (PyTorch implementations of CNN and CyCNN models)
+│   ├── data/                   (training data)
+│   ├── logs/                   (training logs)
+│   ├── models/                 (CNN and CyCNN model definitions)
 │   │   ├── cyconvlayer.py
 │   │   ├── cyresnet.py
 │   │   ├── cyvgg.py
 │   │   ├── getmodel.py
 │   │   ├── resnet.py
 │   │   └── vgg.py
-│   ├── saves/                  (Directory for savining model parameters from training)
-│   ├── main.py                 (Main script for model training/testing)
-│   ├── data.py                 (Script for loading datasets)
-│   ├── image_transforms.py     (Script for transforming images in various ways)
+│   ├── saves/                  (saved model checkpoints)
+│   ├── main.py                 (main script for training/testing)
+│   ├── data.py                 (dataset loading)
+│   ├── image_transforms.py     (image transformation logic)
 │   └── utils.py
-├── cycnn-extension/            (Directory for CyCNN CUDA extension)
+├── cycnn-extension/            (CUDA extension for CyCNN)
 │   ├── cycnn.cpp
-│   ├── cycnn_cuda.cu           (CUDA kernel code of cyconv layer)
+│   ├── cycnn_cuda.cu
 │   └── setup.py
-├── ReadMe.md
-
+└── README.md
 ```
 
-# How to run
+---
 
-**Make sure to have compatible gcc, nvcc(CUDA), Python, and PyTorch versions installed. We recommend to use the docker image that we provide. If you want to use another version of gcc or nvcc, you should check compatibility with Python, PyTorch, and Torchvision versions.**
+## How to Run (Train / Test)
 
-You can skip step 1 and 2 if you use the provided docker image.
+Main script: `cycnn/main.py`
 
-## 1. Install Requirements
-
-**You can skip this step if you use provided docker image.** All needed pakcages are already installed in the image.
-```plaintext
-cycnn/cycnn> pip install -r requirements.txt
-```
-
-## 2. Install CyCNN extension
-
-**You can skip this step if you use provided docker image.** CyCNN extension is already installed in the image.
-
-Install the CyCNN extension using:
-
-```plaintext
-~/cycnn/cycnn-extension> python setup.py install
-```
-
-Then, you can use the CyCNN extension as follows: 
-
-```plaintext
-import CyConv2d_cuda
-
-output = CyConv2d_cuda.forward(
-        input, weight, workspace, stride, padding, dilation)
-```
-
-We implement `CyConv2d` wrapper in `cycnn/models/cyconvlayer.py`. It has almost same interface with `torch.nn.Conv2d`. 
-
-
-## 3. Model Training / Testing
-
-`~/cycnn/cycnn/main.py` is the main scipt for training/testing CNN/CyCNN models. 
-
-```plaintext
+```text
 usage: main.py [-h] [--model MODEL] [--train] [--test]
                [--polar-transform POLAR_TRANSFORM]
                [--augmentation AUGMENTATION] [--data-dir DATA_DIR]
                [--batch-size BATCH_SIZE] [--num-epochs NUM_EPOCHS] [--lr LR]
                [--dataset DATASET] [--redirect]
                [--early-stop-epochs EARLY_STOP_EPOCHS] [--test-while-training]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --model MODEL         Model to train.
-  --train               If used, run the script with training mode.
-  --test                If used, run the script with test mode.
-  --polar-transform POLAR_TRANSFORM
-                        Polar transformation. Should be one of
-                        linearpolar/logpolar.
-  --augmentation AUGMENTATION
-                        Training data augmentation. Should be one of
-                        rot/trans/rottrans.
-  --data-dir DATA_DIR   Directory path to save datasets.
-  --batch-size BATCH_SIZE
-                        Batch size used in training.
-  --num-epochs NUM_EPOCHS
-                        Number of maximum epochs.
-  --lr LR               learning rate.
-  --dataset DATASET     Dataset. Should be one of mnist/svhn/cifar10/cifar100
-  --redirect            If used, redirect stdout to log file in logs/ .
-  --early-stop-epochs EARLY_STOP_EPOCHS
-                        Epochs to wait until early stopping.
-  --test-while-training
-                        If used with --train, run tests at every training
-                        epoch.
-
 ```
 
-For example, following script will perform CyVGG19 training on MNIST dataset with linearpolar transformation. It will save model parameters with highest validation accuracy in the `~/cycnn/cycnn/saves` directory.
-
-```plaintext
-~/cycnn/cycnn> python main.py --train --model=cyvgg19 --dataset=mnist \
-				--polar-transform=linearpolar 
-
-configuration:  {'model': 'cyvgg19', 'train': True, 'test': False, 
-'polar_transform': 'linearpolar', 'augmentation': None, 
-'data_dir': './data', 'batch_size': 128, 'num_epochs': 9999999,
-'lr': 0.05, 'dataset': 'mnist', 'redirect': False, 'early_stop_epochs': 15, 
-'test_while_training': False}
-Using device:  cuda
-1 devices available
-# Parameters: 20559.2K
-54000 Train data. 6000 Validation data. 10000 Test data.
-===> Training mnist-cyvgg19-linearpolar begin
-[Epoch 0] Train Loss: 0.508112
-[Epoch 0] Validation loss: 0.1685, Accuracy: 5669/6000 (94.48%)
-Saving model checkpoint to saves/mnist-cyvgg19-linearpolar.pt
-Elapsed time: 18.0 sec
-...
-[Epoch 52] Train Loss: 0.000117
-[Epoch 52] Validation loss: 0.0367, Accuracy: 5966/6000 (99.43%)
-Elapsed time: 18.4 sec
-Training Done!
+Train CyVGG19 on MNIST (LinearPolar):
+```bash
+python main.py --train --model cyvgg19 --dataset mnist                --polar-transform linearpolar --batch-size 128 --num-epochs 10
 ```
 
-Then we can run the test using the saved checkpoint. Note that testing always use rotated version of each datasets.
-
-```plaintext
-~/cycnn/cycnn> python main.py --test --model=cyvgg19 --dataset=mnist \
-			   --polar-transform=linearpolar
-
-configuration:  {'model': 'cyvgg19', 'train': False, 'test': True, 
-'polar_transform': 'linearpolar', 'augmentation': None, 
-'data_dir': './data', 'batch_size': 128, 'num_epochs': 9999999, 
-'lr': 0.05, 'dataset': 'mnist', 'redirect': False, 'early_stop_epochs': 15,
-'test_while_training': False}
-Using device:  cuda
-1 devices available
-# Parameters: 20559.2K
-54000 Train data. 6000 Validation data. 10000 Test data.
-===> Testing mnist-cyvgg19-linearpolar with rotated dataset begin
-Test loss: 1.0565, Accuracy: 8343/10000 (83.43%)
+Test a saved checkpoint:
+```bash
+python main.py --test --model cyvgg19 --dataset mnist                --polar-transform linearpolar
 ```
 
+Results are stored in `cycnn/saves/` and logs in `cycnn/logs/`.
+
+---
+
+## Compatibility & Notes
+
+- PyTorch/CUDA: cu12.x builds run fine with driver 581.57 (reported CUDA 13.0).
+- GPU architecture: RTX 3060/3070 Ti = SM 8.6 → `TORCH_CUDA_ARCH_LIST="8.6"`.
+- WSL2: If `nvidia-smi` fails, ensure GPU integration is enabled on Windows.
+- OpenCV: Missing `libGL` or `libglib` causes `cv2` import errors - installed above.
+- Memory: For 8 GB VRAM (3070 Ti), lower `--batch-size` (e.g., 64 or 32).
+- Docker Compose (GPU): If the `deploy:` block is ignored, run with:
+  ```bash
+  docker compose run --gpus all cycnn-gpu ...
+  ```
+
+---
+
+## Changes from the Original README
+
+- Removed legacy CentOS 7 + CUDA 10.0 + PyTorch 1.2.0 setup.
+- Replaced with modern Ubuntu 24.04 / CUDA 12.x–13 / PyTorch 2.x pipeline.
+- Added Docker instructions (GPU/CPU, Compose).
+- Added WSL2 GPU notes and verified dependency setup.
+- Added explicit architecture flag for Ampere (SM 8.6).
+
+---
+
+Maintainer note:
+This updated README targets modern RTX 30-series GPUs and newer CUDA/PyTorch stacks, tested on Ubuntu 24.04 LTS under WSL2.
