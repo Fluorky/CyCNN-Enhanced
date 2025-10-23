@@ -3,8 +3,9 @@ import json
 import shutil
 
 # === CONFIG ===
-datasets = ["MNIST", "LEGO", "GTSRB"]
-models = ["cyvgg19", "cyresnet56"]
+# datasets = ["MNIST", "LEGO", "GTSRB"]
+datasets = ["LEGO"]
+models = ["cyvgg19", "cyresnet56", "vgg19", "resnet56"]
 transforms = ["linearpolar", "logpolar"]
 ext = ".pt"
 
