@@ -206,3 +206,7 @@ Results are stored in `cycnn/saves/` and logs in `cycnn/logs/`.
   ```bash
   docker compose run --gpus all cycnn-gpu ...
   ```
+
+> **Fork Notice:**  
+This project is based on a fork of the original repository.  
+It includes numerous fixes, improvements, and additional functionalities built on top of the original work.
