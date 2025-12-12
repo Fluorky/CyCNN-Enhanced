@@ -4,7 +4,7 @@
 
 - **CPU:** AMD Ryzen 7 5700X
 - **GPU:** NVIDIA GeForce RTX 3060 (12 GB) / RTX 3070 Ti (8 GB)
-- **OS:** Ubuntu 24.04.2 LTS on Windows 10 (WSL2)
+- **OS:** Ubuntu 24.04.2 LTS on Windows 10 and Windows 11 (WSL2)
 - **NVIDIA Driver:** 581.57 (`nvidia-smi`)
 - **Reported CUDA Version:** 13.0
 - **Python (recommended):** 3.10–3.11
