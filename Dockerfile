@@ -1,12 +1,14 @@
 # ---- GPU-enabled build (CUDA 12.1) ----
 FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+# (RTX 3060 / 3070 Ti = Ampere, SM 8.6)
 ENV DEBIAN_FRONTEND=noninteractive     PIP_DISABLE_PIP_VERSION_CHECK=1     PYTHONDONTWRITEBYTECODE=1     PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-dev \
     git build-essential \
-    libgl1 libglib2.0-0 \ 
+    libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Make "python" point to python3
