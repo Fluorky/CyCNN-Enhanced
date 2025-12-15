@@ -1,41 +1,43 @@
-# ---- GPU-enabled build (CUDA 12.1) ----
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+# ---- GPU-enabled build (CUDA 13 / PyTorch from NGC) ----
+FROM nvcr.io/nvidia/pytorch:25.02-py3
 
-ENV TORCH_CUDA_ARCH_LIST="8.6+PTX"
-# (RTX 3060 / 3070 Ti = Ampere, SM 8.6)
-ENV DEBIAN_FRONTEND=noninteractive     PIP_DISABLE_PIP_VERSION_CHECK=1     PYTHONDONTWRITEBYTECODE=1     PYTHONUNBUFFERED=1
+# Build extension for both Ampere (3060/3070Ti) and Blackwell (5070)
+ENV TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX"
 
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# System deps for building C++/CUDA extensions and runtime libs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-dev \
-    git build-essential \
+    git build-essential ninja-build \
     libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Make "python" point to python3
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-
 WORKDIR /app
 
-# Copy only what's needed first to leverage Docker layer caching
+# Copy only requirements first for caching
 COPY cycnn/requirements.txt /app/requirements.txt
 
-# Install Python deps except the local CyConv2d (we'll build it from source)
-RUN python -m pip install --upgrade pip \
- && pip install --no-cache-dir ninja \
- && sed -e '/^CyConv2d==/d' requirements.txt > requirements.noext.txt \
- && pip install --no-cache-dir -r requirements.noext.txt
+# Install Python deps BUT do not override the PyTorch/CUDA stack from the base image
+RUN python -m pip install --upgrade pip && \
+    sed -e '/^torch==/d' \
+        -e '/^torchvision==/d' \
+        -e '/^triton==/d' \
+        -e '/^nvidia-/d' \
+        -e '/^CyConv2d==/d' \
+        /app/requirements.txt > /app/requirements.noext.txt && \
+    pip install --no-cache-dir -r /app/requirements.noext.txt
 
-# Now copy and build the CUDA extension after torch is present
+# Copy and build the CUDA extension after torch is present (from base image)
 COPY cycnn-extension/ /app/cycnn-extension/
-RUN cd /app/cycnn-extension \
- && python setup.py install
+RUN cd /app/cycnn-extension && pip install . --no-build-isolation
 
 # Finally copy the rest of the project
 COPY . /app
 
-# Helpful defaults
 ENV PYTHONPATH=/app
 WORKDIR /app/cycnn
 
-# Default command prints help; override in docker run / compose
 CMD ["python", "main.py", "--help"]
