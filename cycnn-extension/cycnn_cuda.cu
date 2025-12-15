@@ -1131,7 +1131,7 @@ torch::Tensor cyconv2d_cuda_forward_typical(
       CEIL(batch_size * out_channels, block_fwd.x),
       CEIL(out_height * out_width, block_fwd.y));
 
-  AT_DISPATCH_FLOATING_TYPES(output.type(), "cyconv2d_forward_cuda",
+  AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "cyconv2d_forward_cuda",
       ([&]() {
         cyconv2d_cuda_forward_kernel<scalar_t>
           <<< grid_fwd, block_fwd >>>(
@@ -1196,7 +1196,7 @@ torch::Tensor cyconv2d_cuda_forward(
   dim3 tpb(256, 1, 1);
   dim3 bpg((N * C * P * Q + 255) / 256, 1, 1);
 
-  AT_DISPATCH_FLOATING_TYPES(output.type(), "baseline_winograd4x4_data_tile_k",
+  AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "baseline_winograd4x4_data_tile_k",
     ( 
       [&] () {
         baseline_winograd4x4_data_tile_k<<<bpg, tpb>>>(input.data<float>(), inputTile, N, C, H, W, 1);
@@ -1205,7 +1205,7 @@ torch::Tensor cyconv2d_cuda_forward(
   );
 
   bpg.x = ((C * K + 255)/ 256); 
-  AT_DISPATCH_FLOATING_TYPES(output.type(), "baseline_winograd4x4_filter_tile_k",
+  AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "baseline_winograd4x4_filter_tile_k",
     ( 
       [&] () {
         baseline_winograd4x4_filter_tile_k<<<bpg, tpb>>>(filter.data<float>(), filterTile, C, K);
@@ -1219,7 +1219,7 @@ torch::Tensor cyconv2d_cuda_forward(
     bpg.y = 1;
     tpb.x = 128;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(output.type(), "X_indep_gemm_opt",
+    AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "X_indep_gemm_opt",
       ( 
         [&] () {
           X_indep_gemm_opt<<<bpg, tpb>>>(filterTile, inputTile, outputTile, 36, K, N * P * Q, C);
@@ -1234,7 +1234,7 @@ torch::Tensor cyconv2d_cuda_forward(
     bpg.y = 36 * K;
     tpb.x = 256;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(output.type(), "baseline_winograd4x4_gemm_k",
+    AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "baseline_winograd4x4_gemm_k",
       ( 
         [&] () {
           baseline_winograd4x4_gemm_k<<<bpg, tpb>>>(inputTile, filterTile, outputTile, N, C, K, H, W); 
@@ -1248,7 +1248,7 @@ torch::Tensor cyconv2d_cuda_forward(
   bpg.y = 1;
   tpb.x = 256;
   tpb.y = 1;
-  AT_DISPATCH_FLOATING_TYPES(output.type(), "baseline_winograd4x4_gemm_k",
+  AT_DISPATCH_FLOATING_TYPES(output.scalar_type(), "baseline_winograd4x4_gemm_k",
     ( 
       [&] () {
         baseline_winograd4x4_data_untile_k<<<bpg, tpb>>>(outputTile, output.data<float>(), N, K, H, W);
@@ -1289,7 +1289,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward_typical(
       CEIL(batch_size * in_channels, block_bwd_data.x),
       CEIL(in_height * in_width, block_bwd_data.y));
 
-  AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "cyconv2d_backward_data_cuda",
+  AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "cyconv2d_backward_data_cuda",
       ([&]() {
         cyconv2d_cuda_backward_data_kernel<scalar_t>
           <<< grid_bwd_data, block_bwd_data >>>(
@@ -1317,7 +1317,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward_typical(
       CEIL(out_channels * in_channels, block_bwd_filter.x),
       CEIL(filter_height * filter_width, block_bwd_filter.y));
 
-  AT_DISPATCH_FLOATING_TYPES(grad_weight.type(), "cyconv2d_backward_filter_cuda",
+  AT_DISPATCH_FLOATING_TYPES(grad_weight.scalar_type(), "cyconv2d_backward_filter_cuda",
       ([&]() {
         cyconv2d_cuda_backward_filter_kernel<scalar_t>
           <<< grid_bwd_filter, block_bwd_filter >>>(
@@ -1381,7 +1381,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
 
   dim3 tpb(256, 1, 1);
   dim3 bpg((N * K * P * Q + 255) / 256, 1, 1);
-  AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "baseline_winograd4x4_data_tile_k",
+  AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "baseline_winograd4x4_data_tile_k",
     ( 
       [&] () {  
         baseline_winograd4x4_data_tile_k<<<bpg, tpb>>>(grad_output.data<float>(), outputGradTile, N, K, H, W, 1);
@@ -1390,7 +1390,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
   );
 
   bpg.x = ((C * K * 3 * 3 + 255)/ 256); 
-  AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "flip_filter",
+  AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "flip_filter",
     ( 
       [&] () {  
         flip_filter<<<bpg, tpb>>>(filter.data<float>(), flipFilter, K, C, 3, 3);
@@ -1399,7 +1399,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
   );
 
   bpg.x = ((C * K + 255)/ 256); 
-  AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "baseline_winograd4x4_filter_tile_k",
+  AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "baseline_winograd4x4_filter_tile_k",
     ( 
       [&] () {  
         baseline_winograd4x4_filter_tile_k<<<bpg, tpb>>>(flipFilter, filterTile, C, K);
@@ -1413,7 +1413,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     bpg.y = 1;
     tpb.x = 128;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "X_indep_gemm_opt",
+    AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "X_indep_gemm_opt",
       ( 
         [&] () {  
           X_indep_gemm_opt<<<bpg, tpb>>>(filterTile, outputGradTile, inputGradTile, 36, C, N * P * Q, K);  
@@ -1427,7 +1427,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     bpg.y = 36 * C;
     tpb.x = 256;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "baseline_winograd4x4_gemm_k",
+    AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "baseline_winograd4x4_gemm_k",
       ( 
         [&] () {  
           baseline_winograd4x4_gemm_k<<<bpg, tpb>>>(outputGradTile, filterTile, inputGradTile, N, K, C, H, W);   
@@ -1440,7 +1440,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
   bpg.y = 1;
   tpb.x = 256;
   tpb.y = 1;
-  AT_DISPATCH_FLOATING_TYPES(grad_input.type(), "baseline_winograd4x4_data_untile_k",
+  AT_DISPATCH_FLOATING_TYPES(grad_input.scalar_type(), "baseline_winograd4x4_data_untile_k",
     ( 
       [&] () {  
         baseline_winograd4x4_data_untile_k<<<bpg, tpb>>>(inputGradTile, grad_input.data<float>(), N, C, H, W);
@@ -1480,7 +1480,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
   tpb.x = 256; tpb.y = tpb.z = 1;
   bpg.x = (N * C * TP * TQ + 255) / 256; bpg.y = bpg.z = 1;
   if(USE_33)
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd3x3_wgrad_input_tile",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd3x3_wgrad_input_tile",
       ( 
         [&] () {  
           baseline_winograd3x3_wgrad_input_tile<<<bpg, tpb>>>(input.data<float>(), inputTile, N, C, H, W, 1);
@@ -1488,7 +1488,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
       )
     );
   else
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd4x4_data_tile_k",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd4x4_data_tile_k",
       ( 
         [&] () {  
           baseline_winograd4x4_data_tile_k<<<bpg, tpb>>>(input.data<float>(), inputTile, N, C, H, W, 1);
@@ -1499,7 +1499,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
 
   bpg.x = ((N * K * TP * TQ + 255) / 256);
   if(USE_33)
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd3x3_wgrad_outGrad_tile",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd3x3_wgrad_outGrad_tile",
       ( 
         [&] () {  
           baseline_winograd3x3_wgrad_outGrad_tile<<<bpg, tpb>>>(grad_output.data<float>(), outputGradTile, N, K, H, W);
@@ -1508,7 +1508,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     );
     
   else
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd4x4_wgrad_outGrad_tile",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd4x4_wgrad_outGrad_tile",
       ( 
         [&] () {  
           baseline_winograd4x4_wgrad_outGrad_tile<<<bpg, tpb>>>(grad_output.data<float>(), outputGradTile, N, K, H, W);
@@ -1522,7 +1522,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     bpg.y = 1;
     tpb.x = 128;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "X_indep_gemm_opt_nt",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "X_indep_gemm_opt_nt",
       ( 
         [&] () {  
           X_indep_gemm_opt_nt<<<bpg, tpb>>>(outputGradTile, inputTile, filterGradTile, TS, K, C, N * TP * TQ);  
@@ -1537,7 +1537,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     bpg.y = TS * K;
     tpb.x = 256;
     tpb.y = 1;
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd_wgrad_gemm_k",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd_wgrad_gemm_k",
       ( 
         [&] () {  
           baseline_winograd_wgrad_gemm_k<<<bpg, tpb>>>(inputTile, outputGradTile, filterGradTile, N, C, K, H, W, TP, TQ, TS); 
@@ -1550,7 +1550,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
   tpb.x = 256;
   tpb.y = 1;
   if(USE_33)
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd3x3_wgrad_inverse",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd3x3_wgrad_inverse",
       ( 
         [&] () {  
           baseline_winograd3x3_wgrad_inverse<<<bpg, tpb>>>(filterGradTile, grad_filter.data<float>(), N, C, K);
@@ -1559,7 +1559,7 @@ std::vector<torch::Tensor> cyconv2d_cuda_backward(
     );
     
   else
-    AT_DISPATCH_FLOATING_TYPES(grad_filter.type(), "baseline_winograd4x4_wgrad_inverse",
+    AT_DISPATCH_FLOATING_TYPES(grad_filter.scalar_type(), "baseline_winograd4x4_wgrad_inverse",
       ( 
         [&] () {  
           baseline_winograd4x4_wgrad_inverse<<<bpg, tpb>>>(filterGradTile, grad_filter.data<float>(), N, C, K);
