@@ -6,19 +6,28 @@ services:
     image: cycnn:gpu
     container_name: cycnn-gpu
     working_dir: /app/cycnn
-    command: ["python", "main.py", "--help"]
+
+    # Keep the container alive instead of exiting after one command
+    command: ["bash", "-lc", "sleep infinity"]
+
+    # Recommended settings for PyTorch + CUDA
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
     volumes:
       - ./cycnn/logs:/app/cycnn/logs
       - ./cycnn/saves:/app/cycnn/saves
       - ./data:/app/cycnn/data
-    # Compose v2 supports this simple GPU flag:
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: ["gpu"]
-    # If your docker-compose doesn't support the above, you can remove deploy: and run with:
-    # docker compose run --gpus all cycnn-gpu
+
+    # GPU support for Docker Compose v2
+    gpus: all
+
+    # Explicit NVIDIA runtime environment
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
   cycnn-cpu:
     build:
@@ -27,7 +36,10 @@ services:
     image: cycnn:cpu
     container_name: cycnn-cpu
     working_dir: /app/cycnn
-    command: ["python", "main.py", "--help"]
+
+    # Keep CPU container alive as well
+    command: ["bash", "-lc", "sleep infinity"]
+
     volumes:
       - ./cycnn/logs:/app/cycnn/logs
       - ./cycnn/saves:/app/cycnn/saves
