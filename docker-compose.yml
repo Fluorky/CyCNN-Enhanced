@@ -7,10 +7,10 @@ services:
     container_name: cycnn-gpu
     working_dir: /app/cycnn
 
-    # Keep the container alive instead of exiting after one command
+    # Keep container alive
     command: ["bash", "-lc", "sleep infinity"]
 
-    # Recommended settings for PyTorch + CUDA
+    # Required for PyTorch CUDA stability
     ipc: host
     ulimits:
       memlock: -1
@@ -21,10 +21,13 @@ services:
       - ./cycnn/saves:/app/cycnn/saves
       - ./data:/app/cycnn/data
 
-    # GPU support for Docker Compose v2
-    gpus: all
+    # OLD-COMPOSE way to reserve GPU (harmless even if ignored)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
 
-    # Explicit NVIDIA runtime environment
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -36,8 +39,6 @@ services:
     image: cycnn:cpu
     container_name: cycnn-cpu
     working_dir: /app/cycnn
-
-    # Keep CPU container alive as well
     command: ["bash", "-lc", "sleep infinity"]
 
     volumes:
