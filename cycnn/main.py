@@ -74,8 +74,10 @@ def train(model, device, optimizer, criterion, train_loader, epoch, args):
         """Apply polar mapping"""
         if args['polar_transform'] is not None:
             images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
-
+	
+        # print("TRAIN BATCH:", images.shape, images.dtype, "contig=", images.is_contiguous(), "cl_contig=", images.is_contiguous(memory_format=torch.channels_last), "stride=", images.stride())
         images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+        images = images.contiguous(memory_format=torch.contiguous_format)
         result = model(images)
 
         if args['model'] == 'hnet':
@@ -129,6 +131,7 @@ def validate(model, device, criterion, test_loader, epoch, args):
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
             images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+            images = images.contiguous(memory_format=torch.contiguous_format)
             result = model(images)
 
             if args['model'] == 'hnet':
@@ -197,7 +200,7 @@ def test(model, device, criterion, test_loader, args, output_dir):
                 images = image_transforms.polar_transform(images, transform_type=args['polar_transform'])
 
             images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
-          
+            images = images.contiguous(memory_format=torch.contiguous_format)
             logits = model(images)
             loss = criterion(logits, labels)
 
@@ -295,7 +298,7 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
-    # print(model)
+    print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
     ))
