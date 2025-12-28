@@ -22,7 +22,7 @@ __all__ = ['CyResNet', 'cyresnet20', 'cyresnet32', 'cyresnet44', 'cyresnet56', '
 def get_num_classes(dataset):
     if dataset == 'cifar100':
         return 100
-    elif dataset in ['mnist-custom', 'mnist', 'cifar10']:
+    elif dataset in ['mnist-custom', 'mnist', 'cifar10', 'svhn']:
         return 10
     elif dataset.startswith('GTSRB'):
         return 43
