@@ -298,7 +298,7 @@ def main():
     print('{} devices available'.format(torch.cuda.device_count()))
 
     model = get_model(model=args['model'], dataset=args['dataset'])
-    print(model)
+    # print(model)
     print('# Parameters: {:.1f}K'.format(
         sum([p.numel() for p in model.parameters()]) / 1000
     ))
