@@ -1,4 +1,4 @@
-# CyCNN - Updated Setup Guide (Ubuntu 24.04 / WSL2 / RTX 30xx)
+# CyCNN - Setup Guide
 
 ## System & Hardware (Host)
 
@@ -206,18 +206,3 @@ Results are stored in `cycnn/saves/` and logs in `cycnn/logs/`.
   ```bash
   docker compose run --gpus all cycnn-gpu ...
   ```
-
----
-
-## Changes from the Original README
-
-- Removed legacy CentOS 7 + CUDA 10.0 + PyTorch 1.2.0 setup.
-- Replaced with modern Ubuntu 24.04 / CUDA 12.x–13 / PyTorch 2.x pipeline.
-- Added Docker instructions (GPU/CPU, Compose).
-- Added WSL2 GPU notes and verified dependency setup.
-- Added explicit architecture flag for Ampere (SM 8.6).
-
----
-
-Maintainer note:
-This updated README targets modern RTX 30-series GPUs and newer CUDA/PyTorch stacks, tested on Ubuntu 24.04 LTS under WSL2.
