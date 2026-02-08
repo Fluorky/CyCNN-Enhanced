@@ -1,0 +1,47 @@
+services:
+  cycnn-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cycnn:gpu
+    container_name: cycnn-gpu
+    working_dir: /app/cycnn
+
+    # Keep container alive
+    command: ["bash", "-lc", "sleep infinity"]
+
+    # Required for PyTorch CUDA stability
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+    volumes:
+      - ./cycnn/logs:/app/cycnn/logs
+      - ./cycnn/saves:/app/cycnn/saves
+      - ./data:/app/cycnn/data
+
+    # OLD-COMPOSE way to reserve GPU (harmless even if ignored)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+  cycnn-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: cycnn:cpu
+    container_name: cycnn-cpu
+    working_dir: /app/cycnn
+    command: ["bash", "-lc", "sleep infinity"]
+
+    volumes:
+      - ./cycnn/logs:/app/cycnn/logs
+      - ./cycnn/saves:/app/cycnn/saves
+      - ./data:/app/cycnn/data

@@ -7,7 +7,7 @@ with open("train_test_scenarios_LEGO.json") as f:
 main_script = "main.py"
 venv_python = "venv/bin/python"
 
-base_data_dir = "./data/LEGO_WIN"
+base_data_dir = "./data/LEGO"
 merged_dir = base_data_dir
 dataset_LEGO_non_rotated = os.path.join(base_data_dir, "dataset_LEGO_non_rotated")
 
