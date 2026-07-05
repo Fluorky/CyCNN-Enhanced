@@ -210,3 +210,5 @@ tags
 .venv/
 venv/.idea/
 .idea/
+venv/
+cycnn/venv/
