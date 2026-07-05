@@ -302,7 +302,7 @@ def main():
         output_dir = args.get('output_dir') or f"./logs/{train_set_name}_test_on_{test_set_name}"
 
         os.makedirs(output_dir, exist_ok=True)
-        test_loss, test_accuracy = test(model, device, criterion, test_loader, args, args['output_dir'])
+        test_loss, test_accuracy = test(model, device, criterion, test_loader, args, output_dir)
         sys.exit(0)
 
 
