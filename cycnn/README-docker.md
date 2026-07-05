@@ -3,7 +3,7 @@
 This folder contains ready-to-use Docker files for the CyCNN-Enhanced project.
 
 ## Files
-- `Dockerfile` — GPU build (CUDA 12.1). Requires NVIDIA driver and `nvidia-container-toolkit`.
+- `Dockerfile` — GPU build based on NVIDIA NGC PyTorch 25.02. Intended for CUDA 12.8 / Blackwell-capable environments, including RTX 5070 Ti.
 - `Dockerfile.cpu` — CPU-only build (no GPU required).
 - `docker-compose.yml` — convenience commands to run either image with mounted volumes.
 
@@ -53,10 +53,10 @@ docker run --rm --gpus all -v $PWD/cycnn/logs:/app/cycnn/logs -v $PWD/cycnn/save
 
 ## Notes & Troubleshooting
 
-- **CUDA/GPU**: The GPU image uses CUDA 12.1. If you have a different driver/toolkit version, adjust the `FROM nvidia/cuda:...` tag accordingly.
+- **CUDA/GPU**: The GPU image uses NVIDIA's NGC PyTorch base image. It is preferred for RTX 5070 Ti / Blackwell because it avoids installing an older PyTorch CUDA wheel.
 - **Extension build**: We install PyTorch first, *then* build `cycnn-extension` so headers are available. If your GPU has a very new/old compute capability, you can pass custom NVCC flags by setting `TORCH_CUDA_ARCH_LIST`, e.g.:
   ```bash
-  docker run -e TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9" ...
+  docker run -e TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX" ...
   ```
 - **OpenCV**: We install `libgl1` and `libglib2.0-0` so `cv2` imports cleanly inside the container.
 - **Data**: Place datasets under `./data` (mounted into `/app/cycnn/data`). Pretrained weights and logs are persisted via volume mounts.

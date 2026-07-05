@@ -1,23 +1,34 @@
 # CyCNN - Setup Guide
 
-## System & Hardware (Host)
+## Tested Hardware / Environments
 
-- **CPU:** AMD Ryzen 7 5700X
-- **GPU:** NVIDIA GeForce RTX 3060 (12 GB) / RTX 3070 Ti (8 GB)
-- **OS:** Ubuntu 24.04.2 LTS on Windows 10 and Windows 11 (WSL2)
-- **NVIDIA Driver:** 581.57 (`nvidia-smi`)
-- **Reported CUDA Version:** 13.0
-- **Python (recommended):** 3.10–3.11
-- **Docker (optional):** 24.x+ with NVIDIA Container Toolkit
+This repository has been tested on the following local GPU environments:
 
-Note: Even if `nvidia-smi` reports “CUDA Version: 13.0”, the drivers are backward compatible - PyTorch wheels for cu12.x will work properly.
+| Environment | CPU | System RAM | GPU | GPU VRAM | Notes |
+|---|---:|---:|---|---------:|---|
+| Secondary workstation | AMD Ryzen 7 5700X | 32 GB | NVIDIA GeForce RTX 3070 Ti | 8 GB | Ampere / SM 8.6 |
+| Main workstation | AMD Ryzen 9 5950X | 128 GB | NVIDIA GeForce RTX 5070 Ti | 16 GB | Blackwell / SM 12.0 |
+
+Recommended software stack:
+
+- **OS:** Ubuntu 24.04.x LTS, including WSL2 setups
+- **Python:** 3.10–3.12 depending on installation path
+- **Docker:** recommended for GPU builds
+- **GPU stack:** NVIDIA NGC PyTorch 25.02 image for the GPU Docker build
+- **CUDA extension arch list:** `TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX"`
+
+Notes:
+
+- The RTX 3070 Ti setup targets Ampere / SM 8.6.
+- The RTX 5070 Ti setup targets Blackwell / SM 12.0 and should use a CUDA 12.8+ capable PyTorch stack or the provided NGC PyTorch Docker image.
+- The CUDA version shown by `nvidia-smi` is the maximum CUDA runtime supported by the installed driver, not necessarily the CUDA runtime used by PyTorch.
 
 ---
 
 ## Quick Start (Docker) - Recommended
 
 The repository already includes:
-- `Dockerfile` - GPU build (CUDA 12.1)
+- `Dockerfile` - GPU build based on NVIDIA NGC PyTorch 25.02, suitable for CUDA 12.8 / Blackwell-capable environments
 - `Dockerfile.cpu` - CPU-only build
 - `docker-compose.yml` - for convenient multi-service setup
 - `README-docker.md` - detailed container instructions
@@ -39,7 +50,7 @@ sudo systemctl restart docker
 
 Check GPU access:
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvcr.io/nvidia/pytorch:25.02-py3 nvidia-smi
 ```
 
 ---
@@ -81,9 +92,9 @@ Example - train CyVGG19 on MNIST with LinearPolar transform:
 docker run --rm --gpus all   -v $PWD/cycnn/logs:/app/cycnn/logs   -v $PWD/cycnn/saves:/app/cycnn/saves   -v $PWD/data:/app/cycnn/data   cycnn:gpu   python main.py --model cyvgg19 --train --dataset mnist                  --polar-transform linearpolar --batch-size 128 --num-epochs 10
 ```
 
-For Ampere GPUs (RTX 3060 / 3070 Ti = `sm_86`), you can set:
+For Ampere and Blackwell GPUs, the Dockerfile already sets:
 ```bash
--e TORCH_CUDA_ARCH_LIST="8.6"
+-e TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX"
 ```
 
 ---
@@ -112,7 +123,7 @@ python -m pip install --upgrade pip
 
 Compatible CUDA 12.x wheels:
 ```bash
-pip install --extra-index-url https://download.pytorch.org/whl/cu121     torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -r cycnn/requirements.txt
 ```
 
@@ -122,7 +133,7 @@ pip install -r cycnn/requirements.txt
 
 ```bash
 cd cycnn-extension
-export TORCH_CUDA_ARCH_LIST="8.6"   # optional, for Ampere
+export TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX"   # Ampere + RTX 50xx / Blackwell
 python setup.py install
 cd ..
 ```
@@ -197,11 +208,12 @@ Results are stored in `cycnn/saves/` and logs in `cycnn/logs/`.
 
 ## Compatibility & Notes
 
-- PyTorch/CUDA: cu12.x builds run fine with driver 581.57 (reported CUDA 13.0).
-- GPU architecture: RTX 3060/3070 Ti = SM 8.6 → `TORCH_CUDA_ARCH_LIST="8.6"`.
+- PyTorch/CUDA: use CUDA 12.8+ PyTorch builds or the provided NGC PyTorch image for RTX 5070 Ti / Blackwell.
+- GPU architecture: RTX 3060/3070 Ti = SM 8.6; RTX 5070 Ti / Blackwell = SM 12.0 → `TORCH_CUDA_ARCH_LIST="8.6;12.0+PTX"`.
 - WSL2: If `nvidia-smi` fails, ensure GPU integration is enabled on Windows.
 - OpenCV: Missing `libGL` or `libglib` causes `cv2` import errors - installed above.
-- Memory: For 8 GB VRAM (3070 Ti), lower `--batch-size` (e.g., 64 or 32).
+- Memory: 32 GB system RAM is sufficient for normal MNIST/SVHN-style experiments; the 128 GB workstation is recommended for larger datasets, many parallel runs, or heavier Docker workflows.
+- GPU memory: For 8 GB VRAM GPUs such as RTX 3070 Ti, lower `--batch-size` when needed, e.g. 64 or 32.
 - Docker Compose (GPU): If the `deploy:` block is ignored, run with:
   ```bash
   docker compose run --gpus all cycnn-gpu ...

@@ -287,15 +287,19 @@ def main():
     """ Test-Only (Using saved .pt file) """
 
     if args['test']:
-        print(f"===> Testing model from {args['model_path']}")
-        if args['model_path'] is None:
-            checkpoint = torch.load('saves/' + fname + '.pt')
-        checkpoint = torch.load(args['model_path'], map_location=device)
+        model_path = args.get('model_path')
+        if model_path is None:
+            model_path = os.path.join('saves', fname + '.pt')
+
+        print(f"===> Testing model from {model_path}")
+        checkpoint = torch.load(model_path, map_location=device)
         model.load_state_dict(checkpoint['state_dict'])
         model.to(device)
         print('Model loaded successfully.')
 
-        output_dir = args['output_dir'] if 'output_dir' in args and args['output_dir'] else f"./logs/{args['train_set']}_test_on_{args['test_set']}"
+        train_set_name = args.get('train_set') or args.get('dataset') or 'unknown_train'
+        test_set_name = args.get('test_set') or args.get('dataset') or 'unknown_test'
+        output_dir = args.get('output_dir') or f"./logs/{train_set_name}_test_on_{test_set_name}"
 
         os.makedirs(output_dir, exist_ok=True)
         test_loss, test_accuracy = test(model, device, criterion, test_loader, args, args['output_dir'])
