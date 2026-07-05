@@ -28,7 +28,9 @@ Notes:
 ## Quick Start (Docker) - Recommended
 
 The repository already includes:
-- `Dockerfile` - GPU build based on NVIDIA NGC PyTorch 25.02, suitable for CUDA 12.8 / Blackwell-capable environments
+- `Dockerfile` - full GPU build based on NVIDIA NGC PyTorch 25.02, suitable for CUDA 12.8 / Blackwell-capable environments
+- `Dockerfile.light` - lightweight GPU build using the same CUDA/PyTorch stack, with large local artifacts excluded from the build context
+- `Dockerfile.light.dockerignore` - ignore rules used only by the lightweight Docker build
 - `Dockerfile.cpu` - CPU-only build
 - `docker-compose.yml` - for convenient multi-service setup
 - `README-docker.md` - detailed container instructions
@@ -57,17 +59,54 @@ docker run --rm --gpus all nvcr.io/nvidia/pytorch:25.02-py3 nvidia-smi
 
 ### 2. Build Images
 
-From the project root (where `cycnn/` and `cycnn-extension/` are located):
+From the project root (where `cycnn/` and `cycnn-extension/` are located), you can build either a full image or a lightweight image.
+
+#### Full GPU image
+
+Use the default `Dockerfile` when you want a self-contained image that may include the current repository contents, including local datasets, saved models, logs, or experiment artifacts if they are present in the build context.
 
 ```bash
-# GPU build
 docker build -t cycnn:gpu -f Dockerfile .
+```
 
-# CPU build
+This is useful for archival or portable experiment images. The trade-off is that the Docker build context can become very large when datasets, checkpoints, logs, or generated outputs are stored inside the repository tree.
+
+#### Lightweight GPU image
+
+Use `Dockerfile.light` for faster development builds. This variant uses the same CUDA/PyTorch stack as the full GPU image, but large local artifacts are excluded from the build context by `Dockerfile.light.dockerignore`.
+
+```bash
+docker build -t cycnn:gpu-light -f Dockerfile.light .
+```
+
+For lightweight images, mount datasets, logs, and checkpoints at runtime:
+
+```bash
+docker run --rm --gpus all \
+  --ipc=host \
+  --ulimit memlock=-1 \
+  --ulimit stack=67108864 \
+  -v "$PWD/data:/app/cycnn/data" \
+  -v "$PWD/cycnn/logs:/app/cycnn/logs" \
+  -v "$PWD/cycnn/saves:/app/cycnn/saves" \
+  cycnn:gpu-light \
+  python main.py --help
+```
+
+Use the full image when you intentionally want local artifacts baked into the image. Use the lightweight image when you want faster rebuilds and runtime-mounted datasets/checkpoints.
+
+#### CPU image
+
+For CPU-only usage:
+
+```bash
 docker build -t cycnn:cpu -f Dockerfile.cpu .
 ```
 
-or via Compose:
+#### Docker Compose
+
+Docker Compose builds the default GPU and CPU services:
+
 ```bash
 docker compose build cycnn-gpu
 docker compose build cycnn-cpu
