@@ -222,14 +222,12 @@ cycnn/
 
 Main script: `cycnn/main.py`
 
-```text
-usage: main.py [-h] [--model MODEL] [--train] [--test]
-               [--polar-transform POLAR_TRANSFORM]
-               [--augmentation AUGMENTATION] [--data-dir DATA_DIR]
-               [--batch-size BATCH_SIZE] [--num-epochs NUM_EPOCHS] [--lr LR]
-               [--dataset DATASET] [--redirect]
-               [--early-stop-epochs EARLY_STOP_EPOCHS] [--test-while-training]
+To see all available options:
+
+```bash
+python main.py --help
 ```
+Common examples are shown below.
 
 Train CyVGG19 on MNIST (LinearPolar):
 ```bash

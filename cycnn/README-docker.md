@@ -4,6 +4,8 @@ This folder contains ready-to-use Docker files for the CyCNN-Enhanced project.
 
 ## Files
 - `Dockerfile` — GPU build based on NVIDIA NGC PyTorch 25.02. Intended for CUDA 12.8 / Blackwell-capable environments, including RTX 5070 Ti.
+- `Dockerfile.light` — lightweight GPU build using the same CUDA/PyTorch stack.
+- `Dockerfile.light.dockerignore` — ignore rules used only by the lightweight build.
 - `Dockerfile.cpu` — CPU-only build (no GPU required).
 - `docker-compose.yml` — convenience commands to run either image with mounted volumes.
 
@@ -13,6 +15,27 @@ This folder contains ready-to-use Docker files for the CyCNN-Enhanced project.
 
 From the root of the project (the folder that contains `cycnn/` and `cycnn-extension/`):
 
+### Lightweight GPU image
+
+For faster development builds, use:
+
+```bash
+docker build -t cycnn:gpu-light -f Dockerfile.light .
+```
+
+This build uses Dockerfile.light.dockerignore to exclude large local artifacts such as datasets, checkpoints, logs, NumPy arrays, archives, and experiment outputs from the Docker build context.
+Mount datasets/checkpoints/logs at runtime:
+```bash
+docker run --rm --gpus all \
+  --ipc=host \
+  --ulimit memlock=-1 \
+  --ulimit stack=67108864 \
+  -v "$PWD/data:/app/cycnn/data" \
+  -v "$PWD/cycnn/logs:/app/cycnn/logs" \
+  -v "$PWD/cycnn/saves:/app/cycnn/saves" \
+  cycnn:gpu-light \
+  python main.py --help
+```
 ### GPU
 ```bash
 docker build -t cycnn:gpu -f Dockerfile .
