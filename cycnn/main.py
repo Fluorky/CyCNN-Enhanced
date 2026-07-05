@@ -166,7 +166,8 @@ def test(model, device, criterion, test_loader, args, output_dir):
                 images = image_transforms.resize_images(images, 32, 32)
 
             if not args.get('use_prerotated_test_set', False):
-                print("Applying random rotation to test images.")
+                if batch_idx == 0:
+                    print("Applying random rotation to test images.")
                 images = image_transforms.random_rotate(images)
 
             """Apply polar transforms"""
