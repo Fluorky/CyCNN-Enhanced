@@ -45,3 +45,28 @@ services:
       - ./cycnn/logs:/app/cycnn/logs
       - ./cycnn/saves:/app/cycnn/saves
       - ./data:/app/cycnn/data
+
+  cycnn-gpu-light:
+    build:
+      context: .
+      dockerfile: Dockerfile.light
+    image: cycnn:gpu-light
+    container_name: cycnn-gpu-light
+    working_dir: /app/cycnn
+    command: ["bash", "-lc", "sleep infinity"]
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - ./cycnn/logs:/app/cycnn/logs
+      - ./cycnn/saves:/app/cycnn/saves
+      - ./data:/app/cycnn/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
