@@ -1,60 +1,79 @@
-import models.resnet as resnet
-import models.vgg as vgg
-import models.cyresnet as cyresnet
-import models.cyvgg as cyvgg
+def _require_cycnn_extension(model_name: str):
+    raise RuntimeError(
+        f"{model_name} requires the CUDA-only CyConv2d extension. "
+        "Use the GPU Docker image for CyCNN models, or choose a classic CPU model "
+        "such as vgg19 or resnet20."
+    )
+
 
 def get_model(model, dataset, classify=True):
+    """Return a model by name.
 
+    Classic CNN models can run in the CPU image.
+    CyCNN models require the GPU image because they depend on CyConv2d_cuda.
     """
-    VGG Models
-    """
-    if model == 'vgg11':
-        model = vgg.vgg11_bn(dataset=dataset, classify=classify)
-    if model == 'vgg13':
-        model = vgg.vgg13_bn(dataset=dataset, classify=classify)
-    if model == 'vgg16':
-        model = vgg.vgg16_bn(dataset=dataset, classify=classify)
-    if model == 'vgg19':
-        model = vgg.vgg19_bn(dataset=dataset, classify=classify)
 
-    """
-    CyVGG Models
-    """
-    if model == 'cyvgg11':
-        model = cyvgg.cyvgg11_bn(dataset=dataset, classify=classify)
-    if model == 'cyvgg13':
-        model = cyvgg.cyvgg13_bn(dataset=dataset, classify=classify)
-    if model == 'cyvgg16':
-        model = cyvgg.cyvgg16_bn(dataset=dataset, classify=classify)
-    if model == 'cyvgg19':
-        model = cyvgg.cyvgg19_bn(dataset=dataset, classify=classify)
+    if model in {"vgg11", "vgg13", "vgg16", "vgg19"}:
+        import models.vgg as vgg
 
-    """
-    Resnet Models   
-    """
-    if model == 'resnet20':
-        model = resnet.resnet20(dataset=dataset)
-    if model == 'resnet32':
-        model = resnet.resnet32(dataset=dataset)
-    if model == 'resnet44':
-        model = resnet.resnet44(dataset=dataset)
-    if model == 'resnet56':
-        model = resnet.resnet56(dataset=dataset)
+        constructors = {
+            "vgg11": vgg.vgg11_bn,
+            "vgg13": vgg.vgg13_bn,
+            "vgg16": vgg.vgg16_bn,
+            "vgg19": vgg.vgg19_bn,
+        }
+        return constructors[model](dataset=dataset, classify=classify)
 
-    """
-    CyResnet Models
-    """
-    if model == 'cyresnet20':
-        model = cyresnet.cyresnet20(dataset=dataset)
-    if model == 'cyresnet32':
-        model = cyresnet.cyresnet32(dataset=dataset)
-    if model == 'cyresnet44':
-        model = cyresnet.cyresnet44(dataset=dataset)
-    if model == 'cyresnet56':
-        model = cyresnet.cyresnet56(dataset=dataset)
-    if model == 'cyresnet110':
-        model = cyresnet.cyresnet110(dataset=dataset)
-    if model == 'cyresnet1202':
-        model = cyresnet.cyresnet1202(dataset=dataset)
+    if model in {"resnet20", "resnet32", "resnet44", "resnet56"}:
+        import models.resnet as resnet
 
-    return model
+        constructors = {
+            "resnet20": resnet.resnet20,
+            "resnet32": resnet.resnet32,
+            "resnet44": resnet.resnet44,
+            "resnet56": resnet.resnet56,
+        }
+        return constructors[model](dataset=dataset)
+
+    if model in {"cyvgg11", "cyvgg13", "cyvgg16", "cyvgg19"}:
+        try:
+            import models.cyvgg as cyvgg
+        except ModuleNotFoundError as exc:
+            if exc.name == "CyConv2d_cuda":
+                _require_cycnn_extension(model)
+            raise
+
+        constructors = {
+            "cyvgg11": cyvgg.cyvgg11_bn,
+            "cyvgg13": cyvgg.cyvgg13_bn,
+            "cyvgg16": cyvgg.cyvgg16_bn,
+            "cyvgg19": cyvgg.cyvgg19_bn,
+        }
+        return constructors[model](dataset=dataset, classify=classify)
+
+    if model in {
+        "cyresnet20",
+        "cyresnet32",
+        "cyresnet44",
+        "cyresnet56",
+        "cyresnet110",
+        "cyresnet1202",
+    }:
+        try:
+            import models.cyresnet as cyresnet
+        except ModuleNotFoundError as exc:
+            if exc.name == "CyConv2d_cuda":
+                _require_cycnn_extension(model)
+            raise
+
+        constructors = {
+            "cyresnet20": cyresnet.cyresnet20,
+            "cyresnet32": cyresnet.cyresnet32,
+            "cyresnet44": cyresnet.cyresnet44,
+            "cyresnet56": cyresnet.cyresnet56,
+            "cyresnet110": cyresnet.cyresnet110,
+            "cyresnet1202": cyresnet.cyresnet1202,
+        }
+        return constructors[model](dataset=dataset)
+
+    raise ValueError(f"Unknown model: {model}")
