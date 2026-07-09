@@ -6,19 +6,31 @@ services:
     image: cycnn:gpu
     container_name: cycnn-gpu
     working_dir: /app/cycnn
-    command: ["python", "main.py", "--help"]
+
+    # Keep container alive
+    command: ["bash", "-lc", "sleep infinity"]
+
+    # Required for PyTorch CUDA stability
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
     volumes:
       - ./cycnn/logs:/app/cycnn/logs
       - ./cycnn/saves:/app/cycnn/saves
       - ./data:/app/cycnn/data
-    # Compose v2 supports this simple GPU flag:
+
+    # OLD-COMPOSE way to reserve GPU (harmless even if ignored)
     deploy:
       resources:
         reservations:
           devices:
             - capabilities: ["gpu"]
-    # If your docker-compose doesn't support the above, you can remove deploy: and run with:
-    # docker compose run --gpus all cycnn-gpu
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
   cycnn-cpu:
     build:
@@ -27,8 +39,34 @@ services:
     image: cycnn:cpu
     container_name: cycnn-cpu
     working_dir: /app/cycnn
-    command: ["python", "main.py", "--help"]
+    command: ["bash", "-lc", "sleep infinity"]
+
     volumes:
       - ./cycnn/logs:/app/cycnn/logs
       - ./cycnn/saves:/app/cycnn/saves
       - ./data:/app/cycnn/data
+
+  cycnn-gpu-light:
+    build:
+      context: .
+      dockerfile: Dockerfile.light
+    image: cycnn:gpu-light
+    container_name: cycnn-gpu-light
+    working_dir: /app/cycnn
+    command: ["bash", "-lc", "sleep infinity"]
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - ./cycnn/logs:/app/cycnn/logs
+      - ./cycnn/saves:/app/cycnn/saves
+      - ./data:/app/cycnn/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility

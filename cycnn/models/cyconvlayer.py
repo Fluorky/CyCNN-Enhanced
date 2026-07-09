@@ -38,8 +38,26 @@ class CyConv2dFunction(autograd.Function):
 
 class CyConv2d(nn.Module):
     
-    """Workspace for Cy-Winograd algorithm"""
-    workspace = torch.zeros(1024 * 1024 * 1024 * 1, dtype=torch.float32).to(torch.device('cuda'))
+    """Workspace for Cy-Winograd algorithm.
+
+    Allocated lazily on the input CUDA device to avoid requiring CUDA at import time.
+    """
+    _workspace = None
+    _workspace_numel = 1024 * 1024 * 1024
+
+    @staticmethod
+    def _get_workspace(input):
+        if not input.is_cuda:
+            raise RuntimeError("CyConv2d requires a CUDA tensor because CyConv2d_cuda is a CUDA extension.")
+
+        if CyConv2d._workspace is None or CyConv2d._workspace.device != input.device:
+            CyConv2d._workspace = torch.zeros(
+                CyConv2d._workspace_numel,
+                dtype=torch.float32,
+                device=input.device,
+            )
+
+        return CyConv2d._workspace
 
     def __init__(self, in_channels, out_channels, kernel_size,
                              stride=1, padding=0, dilation=1):
@@ -56,9 +74,10 @@ class CyConv2d(nn.Module):
         nn.init.xavier_uniform_(self.weight)
 
     def forward(self, input):
+        workspace = CyConv2d._get_workspace(input)
         output = CyConv2dFunction.apply(input,
                                         self.weight,
-                                        CyConv2d.workspace,
+                                        workspace,
                                         self.stride,
                                         self.padding,
                                         self.dilation)
